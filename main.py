@@ -1,7 +1,7 @@
 
 
 import asyncio
-from llm_client2 import LLMClient
+from client.llm_client2 import LLMClient
 
 
 
@@ -10,10 +10,12 @@ async def main():
     message=[
             {"role":"user","content":"Hello, how are you?"  }
         ]
-    await llm_client.chat_completion(
+    async for event in llm_client.chat_completion(
       message,
         False
-    )
+    ):
+        print(event)
+
     print('done..')
 
 # This runs the async function properly

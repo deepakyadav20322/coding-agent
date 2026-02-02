@@ -2,12 +2,17 @@
 # ==============================Some usefull point 👇👇👇👇=================
 #💀 Autoregressive => the model generates text one token at a time, and each new token is predicted using all the previous tokens.
 # 💀 what is coroutene in python
+# 💀factory method is:=> A method that creates and returns an object for you.
+# 💀 what is the difference between yield and retuen and what diff Generator and asyncgeneartor and how ans where usages
+
 
 
 # =========================
 
-from typing import Any
+from typing import Any, AsyncGenerator
 from openai import AsyncOpenAI
+
+from client.response import EventType, StreamEvent, TextDelta, TokenUsage
 
 class LLMClient:
     def __init__(self)->None :
@@ -17,7 +22,7 @@ class LLMClient:
     def get_client(self)->AsyncOpenAI:
         if self._client is None:
             self._client = AsyncOpenAI(
-                api_key = "sdkjsfkdshfkjsdhfkjshfkjhskjf-testing",
+                api_key = "sk-or-v1-",
                 base_url="https://openrouter.ai/api/v1",
                 # here I don't add model name because I want to set it dynamically while making requests and also add auto model selct logic based on request which cursir does
                 # model="",
@@ -31,7 +36,7 @@ class LLMClient:
             await self._client.close()
             self._client = None
 
-    async def chat_completion(self,message:list[dict[str,Any]],stream:bool=True):
+    async def chat_completion(self,message:list[dict[str,Any]],stream:bool=True)->AsyncGenerator[StreamEvent,None]:
 
         client = self.get_client()
         kwargs = {
@@ -43,23 +48,45 @@ class LLMClient:
         # These are two different methods to handle streaming and non-streaming responses it is private methods 
         if stream:
             await self._stream_response()
-        else:
-            await self._non_stream_response(client,kwargs)
+        else: 
+            event = await self._non_stream_response(client,kwargs)
+            yield event
+        return
+            
+            
 
 
 #  PRIVTAE METHODS TO GET RESPONSES
     async def _stream_response(self):
         pass
-    async def _non_stream_response(self,client:AsyncOpenAI,kwargs:dict[str,Any]):
+    async def _non_stream_response(self,client:AsyncOpenAI,kwargs:dict[str,Any]) ->StreamEvent:
         response  = await client.chat.completions.create(**kwargs)
-        message = response.choices[0].message
+        choice = response.choices[0]
+        message =choice.message
 
-        text = None
+        text_delta = None
         if message.content:
-            pass 
-        # 😊"=😊"😊"😊"
+          text_delta = TextDelta(content=message.content)
 
-        print(response)
+        usage = None
+        if response.usage:
+            usage = TokenUsage(
+                prompt_tokens = response.usage.prompt_tokens,
+                completion_tokens = response.usage.completion_tokens,
+                total_tokens = response.usage.total_tokens,
+                cached_tokens = response.usage.prompt_tokens_details.cached_tokens,
+            )
+        stream_event = StreamEvent(
+            type = EventType.MESSAGE_COMPLETE,
+            text_delta= text_delta,
+            finish_reason= choice.finish_reason,
+            usage= usage,
+
+        )
+
+        return stream_event
+
+        # print(response)
 
 
         
