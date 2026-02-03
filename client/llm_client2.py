@@ -47,7 +47,8 @@ class LLMClient:
 
         # These are two different methods to handle streaming and non-streaming responses it is private methods 
         if stream:
-            await self._stream_response()
+            async for event in self._stream_response(client,kwargs):
+                yield event
         else: 
             event = await self._non_stream_response(client,kwargs)
             yield event
@@ -57,8 +58,48 @@ class LLMClient:
 
 
 #  PRIVTAE METHODS TO GET RESPONSES
-    async def _stream_response(self):
-        pass
+    async def _stream_response(self,
+        client:AsyncOpenAI,
+        kwargs:dict[str,Any],
+    ) ->AsyncGenerator[StreamEvent,None]:
+        # here we are using async for because the response is a stream of events
+        # async for chunks in client.chat.completions.create(**kwargs):
+        #         yield chunks
+        response = await client.chat.completions.create(**kwargs)
+
+        finish_reason: str | None = None
+        usage: TokenUsage | None = None
+
+        async for chunk in response:
+            if hasattr(chunk, "usage") and chunk.usage:
+                usage = TokenUsage(
+                    prompt_tokens=chunk.usage.prompt_tokens,
+                    completion_tokens=chunk.usage.completion_tokens,
+                    total_tokens=chunk.usage.total_tokens,
+                    cached_tokens=chunk.usage.prompt_tokens_details.cached_tokens,
+                )
+
+            if not chunk.choices:
+                continue
+
+            choice = chunk.choices[0]
+            delta = choice.delta
+
+            if choice.finish_reason:
+                finish_reason = choice.finish_reason
+
+            if delta.content:
+                yield StreamEvent(
+                    type=EventType.TEXT_DELTA,
+                    text_delta=TextDelta(delta.content),
+                )
+          
+        yield StreamEvent(
+            type=EventType.MESSAGE_COMPLETE,
+            finish_reason=finish_reason,
+            usage=usage,
+        )
+        
     async def _non_stream_response(self,client:AsyncOpenAI,kwargs:dict[str,Any]) ->StreamEvent:
         response  = await client.chat.completions.create(**kwargs)
         choice = response.choices[0]

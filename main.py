@@ -12,7 +12,7 @@ async def main():
         ]
     async for event in llm_client.chat_completion(
       message,
-        False
+        True
     ):
         print(event)
 
