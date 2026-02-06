@@ -1,0 +1,15 @@
+
+1. In streaming response only the last stream event have usages info .
+2.
+3.
+4.
+
+
+
+
+
+
+
+
+===================================== what next day do for ...
+I ma handle error now need to create cli interface where user can add system prompt .......
