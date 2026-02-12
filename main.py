@@ -31,55 +31,111 @@
 
 
 import asyncio
+import sys
 from typing import Any
 from agent.agent import Agent
 from agent.events import AgentEventType
 from client.llm_client2 import LLMClient
 import click
 
+from ui.tui import TUI, get_console
+
+
+console = get_console()
+
+# class CLI:
+#     def __init__(self):
+#         self.agent: Agent | None = None
+#         self.tui = TUI(console=console)
+
+#     async def run_single(self,message:str)->str|None:
+#          async with Agent() as agent:
+#              self.agent = agent
+#              return  await self._process_message(message)
+
+#     # This function is responsible for processing the user message and getting the response from the agent and print it to the according to the type of event and message type we get from the agent
+#     async def _process_message(self,message:str)->str | None:
+#         if not self.agent:
+#             return None
+#         async for event in self.agent.run(message):
+#             if event.type == AgentEventType.AGENT_START:
+#                 # print(f"Agent started with message: {event.data.get('message')}")
+
+#                 continue
+#             if event.type == AgentEventType.TEXT_DELTA:
+#                 content = event.data.get("content","")
+#                 self.tui.stream_assistant_delta(content)
 class CLI:
+
     def __init__(self):
-        self.agent = Agent | None = None
-    async def run_single(self,message:str):
-         async with Agent() as agent:
-             self.agent = agent
-             self._process_message(message)
+        self.agent: Agent | None = None
+        self.tui = TUI(console=console)
 
-    # This function is responsible for processing the user message and getting the response from the agent and print it to the according to the type of event and message type we get from the agent
-    async def _process_message(self,message:str)->str | None:
+    async def run_single(self, message: str) -> None:
+
+        async with Agent() as agent:
+
+            self.agent = agent
+
+            await self._process_message(message)
+
+    async def _process_message(self, message: str) -> None:
+
         if not self.agent:
-            return None
-        async for event in self.run_single(message):
+            return
+        
+        # It(assistant_streaming) is used to show assistance start horizontal line before first message coming 
+        assistant_streaming = False
+        final_response: str | None = None
+        async for event in self.agent.run(message):
+
+            # ❌ DO NOT EXIT HERE
             if event.type == AgentEventType.AGENT_START:
-                # print(f"Agent started with message: {event.data.get('message')}")
-                return
+                continue
+
             if event.type == AgentEventType.TEXT_DELTA:
-                content = event.data.get("content","")
 
+                content = event.data.get("content", "")
+                if not assistant_streaming:
+                    self.tui.begin_assistant()
+                    assistant_streaming = True
+                self.tui.stream_assistant_delta(content)
+            elif event.type == AgentEventType.TEXT_COMPLETE:
+                final_response = event.data.get("content", "")
+                if assistant_streaming:
+                    self.tui.end_assistant()
+                    assistant_streaming = False
 
+            # if event.type == AgentEventType.AGENT_END:
+            #     self.tui.stream_assistant_delta("\n")
+            #     break
 
+            if event.type == AgentEventType.AGENT_ERROR:
 
+                error = event.data.get("error", "Unknown error")
 
-# We remove it from here and put it into agent.py
-# async def run(message:dict[str,Any]):
-#      client = LLMClient()
-#      async for event in client.chat_completion(
-#       message,
-#         True
-#     ):
-#              print(event)
+               
+                console.print(f"\n[error]ERROR: {error}[/error]")
+
+                
+                
+        return final_response 
+
+            
 
 
 @click.command()
 @click.argument("prompt",required=False)
-async def main(prompt:str|None):
+def main(prompt:str|None):
     cli = CLI()
     # messages=[
     #         {"role":"user","content":prompt}
     #     ]
-    asyncio.run(cli.run_single(prompt))
+    if prompt:
+        result = asyncio.run(cli.run_single(prompt))
+        if result is None:
+                sys.exit(1)
 
 # This runs the async function properly
-if __name__ == "__main__":
-    result = asyncio.run(main())
+main()
     # print(f"Response: {result}")

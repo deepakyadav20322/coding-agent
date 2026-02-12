@@ -13,7 +13,7 @@ import asyncio
 from typing import Any, AsyncGenerator
 from openai import APIConnectionError, APIError, AsyncOpenAI, RateLimitError
 
-from client.response import EventType, StreamEvent, TextDelta, TokenUsage
+from client.response import StreamEventType, StreamEvent, TextDelta, TokenUsage
 
 class LLMClient:
     def __init__(self)->None :
@@ -24,7 +24,7 @@ class LLMClient:
     def get_client(self)->AsyncOpenAI:
         if self._client is None:
             self._client = AsyncOpenAI(
-                api_key = "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",
+                api_key = "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",
                 base_url="https://openrouter.ai/api/v1",
                 # here I don't add model name because I want to set it dynamically while making requests and also add auto model selct logic based on request which cursir does
                 # model="",
@@ -66,7 +66,7 @@ class LLMClient:
                     await asyncio.sleep(wait_time)
                 else:
                     yield StreamEvent(  
-                    type = EventType.ERROR,
+                    type = StreamEventType.ERROR,
                     error = f"Rate limit exceeded after {self.max_retries} attempts.",
                     )
                     # I am here return because we reached to our retry limit so no need to continue further
@@ -77,7 +77,7 @@ class LLMClient:
                     await asyncio.sleep(wait_time)
                 else:
                     yield StreamEvent(  
-                    type = EventType.ERROR,
+                    type = StreamEventType.ERROR,
                     error = f"API connection error after {self.max_retries} attempts.",
                     )
                     return
@@ -88,13 +88,13 @@ class LLMClient:
                     await asyncio.sleep(wait_time)
                 else:
                     yield StreamEvent(  
-                    type = EventType.ERROR,
+                    type = StreamEventType.ERROR,
                     error = f"API error after {self.max_retries} attempts.",
                     )
                     return
             except Exception as e:
                 yield StreamEvent(  
-                    type = EventType.ERROR,
+                    type = StreamEventType.ERROR,
                     error = str(e),
                     )
                 return
@@ -136,12 +136,12 @@ class LLMClient:
 
             if delta.content:
                 yield StreamEvent(
-                    type=EventType.TEXT_DELTA,
+                    type=StreamEventType.TEXT_DELTA,
                     text_delta=TextDelta(delta.content),
                 )
           
         yield StreamEvent(
-            type=EventType.MESSAGE_COMPLETE,
+            type=StreamEventType.MESSAGE_COMPLETE,
             finish_reason=finish_reason,
             usage=usage,
         )
@@ -164,7 +164,7 @@ class LLMClient:
                 cached_tokens = response.usage.prompt_tokens_details.cached_tokens,
             )
         stream_event = StreamEvent(
-            type = EventType.MESSAGE_COMPLETE,
+            type = StreamEventType.MESSAGE_COMPLETE,
             text_delta= text_delta,
             finish_reason= choice.finish_reason,
             usage= usage,
