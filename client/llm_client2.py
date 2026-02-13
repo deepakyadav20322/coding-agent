@@ -24,8 +24,12 @@ class LLMClient:
     def get_client(self)->AsyncOpenAI:
         if self._client is None:
             self._client = AsyncOpenAI(
-                api_key = "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",
+                api_key = "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",
                 base_url="https://openrouter.ai/api/v1",
+                 default_headers={
+        "HTTP-Referer": "http://localhost",
+        "X-Title": "Claude Code Agent"
+    }
                 # here I don't add model name because I want to set it dynamically while making requests and also add auto model selct logic based on request which cursir does
                 # model="",
 
@@ -43,8 +47,10 @@ class LLMClient:
         stream:bool=True)->AsyncGenerator[StreamEvent,None]:
 
         client = self.get_client() 
+        # print("DEBUG messages:", message)
         kwargs = {
-            "model":"nvidia/nemotron-3-nano-30b-a3b:free",
+            # "model":"nvidia/nemotron-3-nano-30b-a3b:free",
+            "model": "meta-llama/llama-3-8b-instruct",
             "messages":message,
             "stream":stream
         }
@@ -83,6 +89,7 @@ class LLMClient:
                     return
 
             except APIError as e :
+                print("REAL API ERROR:", e)
                 if attempt < self.max_retries:
                     wait_time = 2 ** attempt  # Exponential backoff
                     await asyncio.sleep(wait_time)
