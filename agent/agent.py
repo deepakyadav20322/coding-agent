@@ -1,19 +1,25 @@
 
+# if you have multiple sessions then you have multiple context manager
+
 
 from typing import AsyncGenerator
 
 from agent.events import AgentEvent, AgentEventType
 from client.llm_client2 import LLMClient
 from client.response import StreamEventType
+from context.manager import ContextManager
 
 
 class Agent:
     def __init__(self):
         self.client = LLMClient()
+        self.context_manager = ContextManager()
 
     async def run(self, message:str):
         yield AgentEvent.agent_start(message)
 #   Add user message to the context and send it to the llm client and get the response as stream of events and then convert those events into agent event and yield it to the caller of this function
+        self.context_manager.add_user_message(message)
+
         final_response: str | None = None
         async for event in self._agentic_loop():
             yield event
@@ -25,10 +31,10 @@ class Agent:
 
         # Agentic loop is multi turn conversation which come letter
     async def _agentic_loop(self)->AsyncGenerator[AgentEvent,None]:
-        messages=[{"role":"user","content":"Hello, how are you?"  }]
+        # messages=[{"role":"user","content":"Hello, how are you?"  }]
 
         response_text = ""
-        async for event in self.client.chat_completion(messages, True ):
+        async for event in self.client.chat_completion(self.context_manager.get_messages(), True ):
 
 
             if event.type == StreamEventType.TEXT_DELTA:
@@ -39,8 +45,8 @@ class Agent:
 
             elif event.type == StreamEventType.ERROR:
                 yield AgentEvent.agent_error(event.error or "Unknown error occured")
-                # return # Here if you want terminate the excuetion of agent b/c we get error but more you do handle this
-
+               
+        self.context_manager.add_assistant_message(response_text or None)
         if response_text:
             yield AgentEvent.text_complete(response_text)
 
