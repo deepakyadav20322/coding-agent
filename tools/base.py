@@ -13,6 +13,7 @@
 import abc 
 from enum import Enum
 from pydantic import BaseModel, ValidationError
+from pydantic.json_schema import model_json_schema
 from typing import Any
 from dataclasses import dataclass ,field
 from pathlib import Path
@@ -23,6 +24,7 @@ class Toolkind(str,Enum):
     WRITE = "write",
     NETWORK = "network",
     SHELL = "shell",
+    MEMORY = "memory",
     MCP = "MCP"
 
 
@@ -37,6 +39,12 @@ class ToolResult:
     output:str
     error:str
     metaData:dict[str,Any] = field(default_factory=dict)
+
+@dataclass
+class ToolConfirmation:
+    tool_name:str
+    params:dict[str,Any]
+    description:str
 
 
 
@@ -83,4 +91,58 @@ class Tool(abc.ABC):
         return []
 
 
+    # It return currentaly bool that curren call is mustating process or not {if you want then go more deeper and add some calcution according to needs and decide then it is mustating or not ?}
+    def is_mutating(self,params:dict[str,Any])->bool:
+        return self.kind in (Toolkind.WRITE,
+                             Toolkind.NETWORK,
+                             Toolkind.SHELL,
+                             Toolkind.MEMORY
+                             
+                                )
+    def get_confirmation(self,invocation:ToolInvocation)->ToolConfirmation:
 
+        if not self.is_mutating(invocation.params) :
+            return None
+        
+        ToolConfirmation(
+            tool_name=self.name,
+            params=invocation.params,
+            description=f"Excute {self.name}",
+
+        )
+
+#   Our custome tool have pydentic model structure but openai sdk need a predefined dict structure that's why I create this to conver pydentic model structure to json /dict .....
+    def to_openai_schema(self)->dict[str,Any]:
+        schema = self.schema
+
+        if isinstance(schema,type) and issubclass(schema,BaseModel):
+           json_schema =  model_json_schema(schema,mode="serialization")
+
+
+            # This respose what openai sdk need to send (type of structure) for tool call
+           return {
+                "name":self.name,
+                "description": self.description,
+                "parameters":{
+                        "type":"object",
+                        "properties":json_schema.get("properties",{}),
+                        "required":json_schema.get('required',[])
+                },
+
+            }
+        # If tool schema is type dict (IT MOSTALY FOR MCP) then that use this 
+        if isinstance(schema,dict):
+            result = {
+                "name":self.name,
+                "description":self.description,
+            }
+
+            if "parameters" in schema:
+                result["parameters"] = schema["parameters"]
+            else:
+                result["parameters"] = schema
+
+            return result
+        
+        # If at the end type of toll call schema is not belongs to dict or pydentic then I raise the invalid schema value error with information
+        return ValueError(f"Invalid schema type for tool {self.name} :{type(schema)} ")    
