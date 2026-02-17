@@ -40,6 +40,18 @@ class ToolResult:
     error:str
     metaData:dict[str,Any] = field(default_factory=dict)
 
+    @classmethod
+    def error_result(
+        cls,
+        error:str,
+        output : str = ""
+    ):
+        return cls(
+            success=False,
+            output=output,
+            error= error
+        )
+
 @dataclass
 class ToolConfirmation:
     tool_name:str
