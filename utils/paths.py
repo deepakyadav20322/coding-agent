@@ -10,6 +10,7 @@ def resolve_path(base: str | Path , path:str|Path):
     
     return Path(base).resolve() / path
 
+# here we take first 8 bytes and check null if get then binary (If wnat then can make complicated and thraw to it)
 def is_binary_file(path:str | Path) -> bool:
     try:
         with open(path,"rb") as f:

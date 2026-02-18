@@ -40,6 +40,8 @@ class ToolResult:
     error:str
     metaData:dict[str,Any] = field(default_factory=dict)
 
+    truncated:bool = False
+
     @classmethod
     def error_result(
         cls,
@@ -51,6 +53,14 @@ class ToolResult:
             output=output,
             error= error
         )
+    @classmethod
+    def success_result(cls,output:str,**kwargs:Any):
+        return cls(
+            success=True,
+            output = output,
+            error= None,
+            **kwargs  
+                      )
 
 @dataclass
 class ToolConfirmation:
