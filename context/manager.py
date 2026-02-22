@@ -28,7 +28,8 @@ class ContextManager:
         self.model_name = 'nvidia/nemotron-3-nano-30b-a3b:free'  # Currentaly I hardcoded this letter Itake it from config
 
     def add_user_message(self,content:str)->None:
-        safe_content = content or ""  # here 
+        # safe_content = content or ""  # here don't pass empty string then you get unexpected resposes in terminal
+        safe_content = content 
 
         item = MessageItem(
             role="user",
@@ -46,7 +47,7 @@ class ContextManager:
             role="assistant",
             content=content or "",
             token_count= count_tokens(
-                content or "",
+                content or "", # here I am doing this because if content is None then it will give error in count_tokens function so I am passing empty string in that case {this possible empty string when I do tool call and tool return None or empty string then it will come here with content None so to avoid that I am doing this }
                 self.model_name,
             ),
         )

@@ -6,15 +6,16 @@ from typing import AsyncGenerator
 
 from agent.events import AgentEvent, AgentEventType
 from client.llm_client2 import LLMClient
-from client.response import StreamEventType
+from client.response import StreamEventType, ToolCall
 from context.manager import ContextManager
+from tools.registry import create_default_registry
 
 
 class Agent:
     def __init__(self):
         self.client = LLMClient()
         self.context_manager = ContextManager()
-
+        self.tool_registry = create_default_registry()
     async def run(self, message:str):
         yield AgentEvent.agent_start(message)
 #   Add user message to the context and send it to the llm client and get the response as stream of events and then convert those events into agent event and yield it to the caller of this function
@@ -34,15 +35,25 @@ class Agent:
         # messages=[{"role":"user","content":"Hello, how are you?"  }]
 
         response_text = ""
-        async for event in self.client.chat_completion(self.context_manager.get_messages(), True ):
 
+        tool_calls:list[ToolCall] = []
 
+        tool_schemas = self.tool_registry.get_schemas()
+        async for event in self.client.chat_completion(
+            self.context_manager.get_messages(),
+            tools = tool_schemas if tool_schemas else None,
+            stream=True 
+        ):
+
+            print(event)
             if event.type == StreamEventType.TEXT_DELTA:
                 if event.text_delta:
                     content  = event.text_delta.content 
                     response_text += content or ""
                     yield AgentEvent.text_delta(content)
-
+            elif event.type == StreamEventType.TOOL_CALL_COMPLETE:
+                if event.tool_call:
+                    tool_calls.append(event.tool_call)
             elif event.type == StreamEventType.ERROR:
                 yield AgentEvent.agent_error(event.error or "Unknown error occured")
                
@@ -57,3 +68,13 @@ class Agent:
             await self.client.close()
 
                
+
+
+
+
+
+
+
+
+
+# 💁💁💁💁💁💁💁💁💁💁💁💁 4:34:000 / 4:35:22

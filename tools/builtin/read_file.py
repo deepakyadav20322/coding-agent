@@ -13,7 +13,7 @@ class ReadFileParmas(BaseModel):
     limit:int|None = Field(None,ge=1,description = "maximum number of lines to read. If not spesified it will read entire file")
 
 class ReadFileTool(Tool):
-    name="read_file",
+    name="read_file"
     description=("Read the content of text file. Returns the content with line number. "
                  "For large files us offset and limit to read specific portions. "
                  "Cannot read binary files (images, executables, etc.)."

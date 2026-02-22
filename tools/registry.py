@@ -7,7 +7,7 @@
 from pathlib import Path
 from typing import Any, List
 from tools.base import Tool, ToolInvocation, ToolResult
-
+from tools.builtin import ReadFileTool, get_all_builtin_tools
 import logging
 
 logger = logging.getLogger(__name__)
@@ -71,6 +71,7 @@ class ToolRegistry:
         )
         try:
             await tool.execute(invocation)
+            # catch a broder exception that our app don't fail
         except Exception as e:
             logger.exception(f"Tool{name} raised unexpected error")
             return ToolResult.error_result(
@@ -80,5 +81,15 @@ class ToolRegistry:
                 }
             )
 
+
+# This is a global function which used to create an global funtion form where we register all tools (It is like singleton instance)
+def create_default_registry()->ToolRegistry:
+    registry = ToolRegistry()
+
+    for tool_class in get_all_builtin_tools():
+        registry.register(tool_class())
+
+    return registry
             
 
+# 04:01:00
