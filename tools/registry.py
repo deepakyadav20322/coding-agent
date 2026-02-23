@@ -45,8 +45,8 @@ class ToolRegistry:
         return[tool.to_openai_schema() for tool in self.get_tools()]
     
 
-    # It is a wrapper on extute of abstract base class of Tool
-    async def invoke(self, name:str,params:dict[str,Any], cwd:Path | None):
+    # It is a wrapper on extute of abstract base class of Tool {it combine validate and execute in one function work as wrapper on execute function of tool}
+    async def invoke(self, name:str,params:dict[str,Any], cwd:Path)->ToolResult:
         tool = self.get(name)
         if tool is None:
             return ToolResult.error_result(
@@ -70,17 +70,17 @@ class ToolRegistry:
             cwd=cwd
         )
         try:
-            await tool.execute(invocation)
+           result  = await tool.execute(invocation)
             # catch a broder exception that our app don't fail
         except Exception as e:
             logger.exception(f"Tool{name} raised unexpected error")
-            return ToolResult.error_result(
+            result =  ToolResult.error_result(
                 f"Internal error : {str(e)}",
                 metadata={
                     "tool_name":name
                 }
             )
-
+        return result
 
 # This is a global function which used to create an global funtion form where we register all tools (It is like singleton instance)
 def create_default_registry()->ToolRegistry:

@@ -87,7 +87,9 @@ class CLI:
         # It(assistant_streaming) is used to show assistance start horizontal line before first message coming 
         assistant_streaming = False
         final_response: str | None = None
+
         async for event in self.agent.run(message):
+            print(event)
 
             # ❌ DO NOT EXIT HERE
             if event.type == AgentEventType.AGENT_START:

@@ -6,20 +6,25 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from client.response import TokenUsage
+from tools.base import ToolResult
 
 
 
 # It is an enum to use how many types we handle in agent event 
 class AgentEventType(str,):
     # Agent lifecycle stuffs
-    AGENT_START = "agent_start",
-    AGENT_END = "agent_end",
-    AGENT_ERROR = "agent_error",
+    AGENT_START = "agent_start"
+    AGENT_END = "agent_end"
+    AGENT_ERROR = "agent_error"
     # more lifecycle come letter...
 
     # text streaming
-    TEXT_DELTA = "text_delta",
+    TEXT_DELTA = "text_delta"
     TEXT_COMPLETE = "text_complete"
+
+    # tool call streaming
+    TOOL_CALL_START = "tool_call_start"
+    TOOL_CALL_COMPLETE = "tool_call_complete"
 
 
 
@@ -66,3 +71,33 @@ class AgentEvent:
             data= {"content":content}
         )
     
+    @classmethod
+    def tool_call_start(cls,call_id:str,name:str,arguments:dict[str,Any]):
+
+        return cls(
+            type=AgentEventType.TOOL_CALL_START,
+            data={
+                "call_id":call_id,
+                "name":name,
+                "arguments":arguments   # like for read file it get limit, path , offset and other arguments in dict these are work as arguments for tool call
+            }
+        )
+    @classmethod
+    def tool_call_complete(cls,call_id:str,name:str, result:ToolResult):
+
+        return cls(
+            type=AgentEventType.TOOL_CALL_COMPLETE,
+            data={
+                "call_id":call_id,
+                "name":name,
+                "success":result.success,
+                "error":result.error,
+                "output":result.output,
+                "metadata":result.metadata,
+                "truncated":result.truncated
+            }
+        )
+    
+
+
+    # 5:08:15  :->   I am not getting sam output as in rivan ranwat
