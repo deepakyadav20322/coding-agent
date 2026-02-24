@@ -25,7 +25,7 @@ class ReadFileTool(Tool):
 
     MAX_FILE_SIZE = 1024*1024*10  # 10MB
     MAX_OUTPUT_TOKENS = 25000  
-    async def excute(self,invocation:ToolInvocation)->ToolResult:
+    async def execute(self,invocation:ToolInvocation)->ToolResult:
         params = ReadFileParmas(**invocation.params)
         path   = resolve_path(invocation.cwd,params.path) 
 
@@ -80,37 +80,37 @@ class ReadFileTool(Tool):
             for i, line in enumerate(selected_lines,start=start_idx+1):
                 formatted_lines.append(f"{i:6}|{line}") # it gives out the index and line
 
-                output = "\n".join(formatted_lines)
-                token_counts = count_tokens(output,"nvidia/nemotron-3-nano-30b-a3b:free")
+            output = "\n".join(formatted_lines)
+            token_counts = count_tokens(output,"nvidia/nemotron-3-nano-30b-a3b:free")
 
             truncated = False
             if token_counts > self.MAX_OUTPUT_TOKENS:  # In this case we need to truncate the text
                 output = truncate_text(
                     output,
                     self.MAX_OUTPUT_TOKENS,
-                    suffix="\n... [truncated {total_lines} total lines]",
+                    suffix=f"\n... [truncated {total_lines} total lines]",
                     
                 )
-                trunctaed = True
+                truncated = True
 
             metadata_lines  = []
             if start_idx>0 and end_idx < total_lines:
                 metadata_lines.append(f"showing Lines {start_idx+1}-{end_idx} of {total_lines}")
             
-                if metadata_lines:
-                    header = " | ".join(metadata_lines) + "\n\n" # these aew used to show users then do good things
-                    output = header + output
+            if metadata_lines:
+                header = " | ".join(metadata_lines) + "\n\n" # these aew used to show users then do good things
+                output = header + output
 
-                return ToolResult.success_result(
-                    output=output,
-                    truncated=truncated,
-                    metadata={
-                        "path": str(path),
-                        "total_lines": total_lines,
-                        "shown_start": start_idx + 1,
-                        "shown_end": end_idx,
-                    },
-                )
+            return ToolResult.success_result(
+                output=output,
+                truncated=truncated,
+                metadata={
+                    "path": str(path),
+                    "total_lines": total_lines,
+                    "shown_start": start_idx + 1,
+                    "shown_end": end_idx,
+                },
+            )
         except Exception as e:
             return ToolResult.error_result(f"Failed to read file: {e}")
 

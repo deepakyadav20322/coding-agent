@@ -30,15 +30,15 @@ class Toolkind(str,Enum):
 
 @dataclass
 class ToolInvocation:
-    params=dict[str,Any]
-    cwd = Path              # it have path of current working directory the used in diffrent way (for example if I go to definde limit file scope the I can first get user permission the proceed that process..  more to do with this)
+    params:dict[str,Any]
+    cwd :Path              # it have path of current working directory the used in diffrent way (for example if I go to definde limit file scope the I can first get user permission the proceed that process..  more to do with this)
 
 @dataclass 
 class ToolResult:
     success:bool
     output:str
     error:str
-    metaData:dict[str,Any] = field(default_factory=dict)
+    metadata:dict[str,Any] = field(default_factory=dict)
 
     truncated:bool = False
 
@@ -92,9 +92,9 @@ class Tool(abc.ABC):
         # all tool define must have the schema (custome have pydentic and inbult used amy have dic type then I chnage and utilize)
         return NotImplementedError("Tool must be define schema property and class attributr")
     
-    # What should happen when the function/too going to excute
+    # What should happen when the function/too going to execute
     @abc.abstractmethod
-    async def excute(self,invocation:ToolInvocation)->ToolResult:
+    async def execute(self,invocation:ToolInvocation)->ToolResult:
         pass
 
 
@@ -105,7 +105,7 @@ class Tool(abc.ABC):
 
         if isinstance(schema,type) and issubclass(schema,BaseModel):
                 try:
-                    BaseModel(**parmas)
+                    schema(**parmas)
 
                 except ValidationError as e:
                     errors = []
@@ -138,7 +138,7 @@ class Tool(abc.ABC):
         ToolConfirmation(
             tool_name=self.name,
             params=invocation.params,
-            description=f"Excute {self.name}",
+            description=f"Execute {self.name}",
 
         )
 

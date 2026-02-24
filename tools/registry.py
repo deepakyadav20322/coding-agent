@@ -4,6 +4,7 @@
 # 💀 Logger is used here because of to see if any error or problrm occers {If you want then you can extend with TUI}
 
 
+from os import name
 from pathlib import Path
 from typing import Any, List
 from tools.base import Tool, ToolInvocation, ToolResult
@@ -23,12 +24,21 @@ class ToolRegistry:
         self._tools[tool.name] = tool
         logger.debug(f"Registered tool {tool.name}")
 
+
     def unregister(self,name)->bool:
         if name in self._tools:
             del self._tools[name]
             return True
+        
         return False
     
+    def get(self, name: str) -> Tool | None:
+        if name in self._tools:
+            return self._tools[name]
+        elif name in self._mcp_tools:
+            return self._mcp_tools[name]
+
+        return None
 
     # Get all resiterd tool
     def get_tools(self):
