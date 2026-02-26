@@ -24,7 +24,7 @@ class LLMClient:
     def get_client(self)->AsyncOpenAI:
         if self._client is None:
             self._client = AsyncOpenAI(
-                api_key = "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",
+                api_key = "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",
                 base_url="https://openrouter.ai/api/v1",
                  default_headers={
         "HTTP-Referer": "http://localhost",
