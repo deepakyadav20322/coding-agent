@@ -19,7 +19,7 @@ def display_path_rel_to_cwd(path:str,cwd:Path|None)->str:
     
     if cwd:
         try:
-            return p.relative_to(cwd)
+            return str(p.relative_to(cwd))
         except:
             pass
     return(p)

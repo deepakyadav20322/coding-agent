@@ -266,7 +266,7 @@ class TUI:
         panel = Panel(
             Group(
                 *blocks
-            )
+            ),
             title=title,
             title_align="left",
             subtitle=Text("done" if success else "failed", style= status_style),

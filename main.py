@@ -81,7 +81,7 @@ class CLI:
 
     def _get_tool_kind(self, tool_name: str) -> str | None:
         tool_kind = None
-        tool = self.agent.session.tool_registry.get(tool_name)
+        tool = self.agent.tool_registry.get(tool_name)
         if not tool:
             tool_kind = None
 
@@ -152,9 +152,9 @@ class CLI:
                     event.data.get("output", ""),
                     event.data.get("error"),
                     event.data.get("metadata"),
-                    event.data.get("diff"),
+                \
                     event.data.get("truncated", False),
-                    event.data.get("exit_code"),
+                   
                 )
 
                 
