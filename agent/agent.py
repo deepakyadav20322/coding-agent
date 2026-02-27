@@ -67,6 +67,7 @@ class Agent:
         
         for tool_call in tool_calls:
         # displaying to the uswrs when tool call start and what are the arguments for that tool call
+            print(f"DEBUG tool_call.arguments: {tool_call.arguments}")
             yield AgentEvent.tool_call_start(
                 call_id=tool_call.call_id,
                 name=tool_call.name or "unknown_tool",

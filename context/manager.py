@@ -36,7 +36,8 @@ class ContextManager:
     def __init__(self):
         self._system_prompt = get_system_prompt()
         self._messages:list[MessageItem] = []
-        self._model_name = 'nvidia/nemotron-3-nano-30b-a3b:free'  # Currentaly I hardcoded this letter Itake it from config
+        self._model_name = 'openrouter/free"'  # Currentaly I hardcoded this letter Itake it from config
+        # self._model_name = 'nvidia/nemotron-3-nano-30b-a3b:free'  # Currentaly I hardcoded this letter Itake it from config
 
     def add_user_message(self,content:str)->None:
         # safe_content = content or ""  # here don't pass empty string then you get unexpected resposes in terminal

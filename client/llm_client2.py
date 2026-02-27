@@ -24,7 +24,7 @@ class LLMClient:
     def get_client(self)->AsyncOpenAI:
         if self._client is None:
             self._client = AsyncOpenAI(
-                api_key = "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",
+                api_key = "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",
                 base_url="https://openrouter.ai/api/v1",
                  default_headers={
         "HTTP-Referer": "http://localhost",
@@ -68,7 +68,8 @@ class LLMClient:
         # print("DEBUG messages:", message)
         kwargs = {
             # "model":"nvidia/nemotron-3-nano-30b-a3b:free",
-            "model": "meta-llama/llama-3-8b-instruct",
+            "model": "openrouter/free",
+            # "model": "nvidia/nemotron-3-nano-30b-a3b:free",
             "messages":message,
             "stream":stream
         }
@@ -202,6 +203,7 @@ class LLMClient:
                                     )
                                 )
         for idx, tc in tool_calls.items():
+            print(f"DEBUG final tool_calls dict: {tool_calls}")  # ← add this
             yield StreamEvent(
                 type=StreamEventType.TOOL_CALL_COMPLETE,
                 tool_call=ToolCall(

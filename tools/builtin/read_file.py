@@ -81,7 +81,8 @@ class ReadFileTool(Tool):
                 formatted_lines.append(f"{i:6}|{line}") # it gives out the index and line
 
             output = "\n".join(formatted_lines)
-            token_counts = count_tokens(output,"nvidia/nemotron-3-nano-30b-a3b:free")
+            token_counts = count_tokens(output,"google/gemma-3-12b-it:free")
+            # token_counts = count_tokens(output,"nvidia/nemotron-3-nano-30b-a3b:free")
 
             truncated = False
             if token_counts > self.MAX_OUTPUT_TOKENS:  # In this case we need to truncate the text
