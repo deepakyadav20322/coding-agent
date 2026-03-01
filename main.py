@@ -31,6 +31,7 @@
 
 
 import asyncio
+from pathlib import Path
 import sys
 from typing import Any
 from agent.agent import Agent
@@ -78,6 +79,39 @@ class CLI:
             self.agent = agent
 
             await self._process_message(message)
+
+    # This is used to run in interactive mode {by communicating with or cli }
+    async def run_interactive(self) -> str | None:
+        self.tui.print_welcome(
+            "AI Agent",
+            lines=[
+                # f"model: openrouter/free",
+                f"model: nvidia/nemotron-3-nano-30b-a3b:free",
+                f"cwd: {Path.cwd()}",
+                "commands: /help /config /approval /model /exit",
+            ],
+        )
+
+        async with Agent() as agent:
+
+            self.agent = agent
+            while True: # It is infinite loop to intract in cli 
+                try:
+                    user_input = console.input("\n[user]>[/user] ").strip()
+                    if not user_input:
+                        continue
+                    await self._process_message(user_input)
+
+                except KeyboardInterrupt:
+                    console.print("\n[dim]Use /exit to quit[/dim]")
+                except EOFError:
+                    break
+
+        return console.print("\n[dim]Good buy![/dim]")
+            
+            
+
+            
 
     def _get_tool_kind(self, tool_name: str) -> str | None:
         tool_kind = None
@@ -175,7 +209,19 @@ def main(prompt:str|None):
         result = asyncio.run(cli.run_single(prompt))
         if result is None:
                 sys.exit(1)
-
+    else:
+         asyncio.run(cli.run_interactive());
 # This runs the async function properly
 main()
     # print(f"Response: {result}")
+
+
+
+
+
+
+
+
+
+
+    # 06:11:00 timing
