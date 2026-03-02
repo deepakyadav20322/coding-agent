@@ -36,7 +36,7 @@ class ContextManager:
     def __init__(self):
         self._system_prompt = get_system_prompt()
         self._messages:list[MessageItem] = []
-        self._model_name = 'nvidia/nemotron-3-nano-30b-a3b:free'  # Currentaly I hardcoded this letter Itake it from config
+        # self._model_name = 'nvidia/nemotron-3-nano-30b-a3b:free'  # Currentaly I hardcoded this letter Itake it from config
         self._model_name = 'openrouter/free'  # Currentaly I hardcoded this letter Itake it from config
         # self._model_name = 'nvidia/nemotron-3-nano-30b-a3b:free'  # Currentaly I hardcoded this letter Itake it from config
 
@@ -55,7 +55,11 @@ class ContextManager:
 
         self._messages.append(item)
 
-    def add_assistant_message(self,content:str)->None:
+    def add_assistant_message(
+            self,
+            content:str,
+            tool_calls:list[dict[str,any]] | None = None,        # this used to mentain and aware about tool calls and it's content in context also with assistance and user  messages 
+            )->None:
         item = MessageItem(
             role="assistant",
             content=content or "",
@@ -63,6 +67,7 @@ class ContextManager:
                 content or "", # here I am doing this because if content is None then it will give error in count_tokens function so I am passing empty string in that case {this possible empty string when I do tool call and tool return None or empty string then it will come here with content None so to avoid that I am doing this }
                 self._model_name,
             ),
+            tool_calls=tool_calls or []
         )
 
         self._messages.append(item)

@@ -24,7 +24,7 @@ class LLMClient:
     def get_client(self)->AsyncOpenAI:
         if self._client is None:
             self._client = AsyncOpenAI(
-                api_key = "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",
+                api_key = "kjskjflks",
                 base_url="https://openrouter.ai/api/v1",
                  default_headers={
         "HTTP-Referer": "http://localhost",
@@ -68,8 +68,8 @@ class LLMClient:
         # print("DEBUG messages:", message)
         kwargs = {
             # "model":"nvidia/nemotron-3-nano-30b-a3b:free",
-            # "model": "openrouter/free",
-            "model": "nvidia/nemotron-3-nano-30b-a3b:free",
+            "model": "openrouter/free",
+            # "model": "nvidia/nemotron-3-nano-30b-a3b:free",
             "messages":message,
             "stream":stream
         }
