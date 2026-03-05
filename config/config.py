@@ -1,6 +1,6 @@
 
 
-from dataclasses import Field,BaseModel
+from pydantic import BaseModel, Field, model_validator
 from pathlib import Path
 import os
 
@@ -9,7 +9,7 @@ class ModelConfig(BaseModel):
     temperature:float = Field(default=1,ge=0.0,le=2.0)
     context_window:int = 256000
 
-class config(BaseModel):
+class Config(BaseModel):
     model:ModelConfig =  Field(default_factory=ModelConfig)
     cwd:Path= Field(default_factory=Path.cwd())
 
@@ -35,15 +35,26 @@ class config(BaseModel):
     
     @model_name.setter
     def model_name(self,value:str)->str:
-        self.model_name  = value
+        self.model.name  = value
 
     @property
     def temperature(self)->float:
         return self.model.temperature
     
     @temperature.setter
-    def model_name(self,value:str)->str:
-        self.temperature  = value
+    def temperature(self,value:str)->str:
+        self.model.temperature  = value
+    
+    def validate(self)->list[str]:
+        errors:list[str] = []
+        if not self.api_key:
+            errors.append("API_KEY is not set in environment variables.")
+        
+        if not self.cwd.exists():
+            errors.append(f"Current working directory {self.cwd} does not exist.")
+
+        return errors
+
 
 
 

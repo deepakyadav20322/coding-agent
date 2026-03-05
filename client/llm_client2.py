@@ -6,7 +6,7 @@
 # 💀 what is the difference between yield and retuen and what diff Generator and asyncgeneartor and how ans where usages
 # 💀 what is difference between yield and return || difference between generator and  itreater 
 
-
+# 💀 💀  WHAT IS DEPENDENCY MANAGEMENT HOW PEOPLE CREATE AND USE IT {7:12:00-7:13:00 SEC TIMIMG MENTION THIS TOPC IN VIDEO RIVAN RANWAT  }
 # =========================
 
 import asyncio
@@ -14,18 +14,22 @@ from typing import Any, AsyncGenerator
 from openai import APIConnectionError, APIError, AsyncOpenAI, RateLimitError
 
 from client.response import (StreamEventType, StreamEvent, TextDelta, TokenUsage, ToolCall, ToolCallDelta,parse_tool_call_arguments)
+from config.config import Config
 
 class LLMClient:
-    def __init__(self)->None :
+    def __init__(self,config: Config)->None :
         self._client : AsyncOpenAI | None = None
         self.max_retries: int =  3
+        self.config = config    
     
     # instance method (Get the initiated client instace)
     def get_client(self)->AsyncOpenAI:
         if self._client is None:
             self._client = AsyncOpenAI(
-                api_key = "kjskjflks",
-                base_url="https://openrouter.ai/api/v1",
+                # api_key = "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",
+                # base_url="https://openrouter.ai/api/v1",
+                api_key = self.config.api_key,
+                base_url=self.config.base_url,
                  default_headers={
         "HTTP-Referer": "http://localhost",
         "X-Title": "Claude Code Agent"
@@ -105,6 +109,7 @@ class LLMClient:
                     wait_time = 2 ** attempt  # Exponential backoff
                     await asyncio.sleep(wait_time)
                 else:
+                    print("REAL API CONNECTION ERROR:", e)
                     yield StreamEvent(  
                     type = StreamEventType.ERROR,
                     error = f"API connection error after {self.max_retries} attempts.",
