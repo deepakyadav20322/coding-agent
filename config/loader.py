@@ -7,7 +7,8 @@ import tomli
 from utils.errors import ConfigError 
 import logging
 
-
+# Project level config file name => .claude-code-type-agent
+# System level config file name => C:\Users\DEEPAK YADAV\AppData\Local\claude-code-type-agent\claude-code-type-agent
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +17,12 @@ CONFIG_FILE_NAME = "config.toml"
 AGENT_MD_FILE = "AGENT.MD"
 # user related configuration
 def get_config_dir()->Path:
+    # TODO:
+    # Automatically create config directory if missing.
+    # This prevents users from manually creating folders.
+    # config_dir.mkdir(parents=True, exist_ok=True)
     return Path(user_config_dir("claude-code-type-agent"))
+
 
 # system related configuration
 def get_system_config_path()->Path:
@@ -73,6 +79,10 @@ def load_config(cwd:Path|None)->Config:
     cwd = cwd or Path.cwd()
 
     system_path = get_system_config_path()
+        # 👇 ADD DEBUG HERE
+    print("System config path:", system_path)
+    print("File exists:", system_path.exists())
+
 
     config_dict: dict[str, Any] = {}
 
@@ -106,3 +116,19 @@ def load_config(cwd:Path|None)->Config:
 
     return config
 
+# TODO:for load_config():
+# If config.toml does not exist, automatically generate a default config file.
+# This helps first-time users get started without manual setup.
+#
+# Example default config:
+#
+# [model]
+# name = "openrouter/free"
+# temperature = 1
+#
+# max_turns = 100
+# max_tool_output_tokens = 50000
+#
+# Implementation idea:
+# if not system_path.exists():
+#     system_path.write_text(DEFAULT_CONFIG_TEMPLATE)

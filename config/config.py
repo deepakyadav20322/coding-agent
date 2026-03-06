@@ -13,8 +13,10 @@ class Config(BaseModel):
     model:ModelConfig =  Field(default_factory=ModelConfig)
     cwd:Path= Field(default_factory=Path.cwd())
 
-    max_turn :int = 100
-    max_tool_output_tokens: int = 50000
+    # It is used to protect infinite loop of ai.
+    max_turns :int = 100
+
+    # max_tool_output_tokens: int = 50000
 
     developer_instructions:str |None = None
     user_instructions:str |None = None

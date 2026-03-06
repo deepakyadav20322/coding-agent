@@ -73,7 +73,7 @@ class CLI:
     def __init__(self,config: Config):
         self.agent: Agent | None = None
         self.config = config
-        self.tui = TUI(console=console)
+        self.tui = TUI(config,console)
 
     async def run_single(self, message: str) -> None:
  
@@ -88,9 +88,10 @@ class CLI:
         self.tui.print_welcome(
             "AI Agent",
             lines=[
-                f"model: openrouter/free",
+                # f"model: openrouter/free",
+                f"model: {self.config.model_name}",
                 # f"model: nvidia/nemotron-3-nano-30b-a3b:free",
-                f"cwd: {Path.cwd()}",
+                f"cwd: {self.config.cwd}",
                 "commands: /help /config /approval /model /exit",
             ],
         )
@@ -242,6 +243,10 @@ main()
 
 
 
+
+#  HOW TO RUN 
+# set API_KEY=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
+# set BASE_URL => set BASE_URL=https://openrouter.ai/api/v1  {iF NEED OTHER WISE IT TAKE IT FROM TOMAL FILE SYSTEM OR PROJECT LEVEL}
 
 
 
