@@ -6,7 +6,7 @@
 # 💀 what is the difference between yield and retuen and what diff Generator and asyncgeneartor and how ans where usages
 # 💀 what is difference between yield and return || difference between generator and  itreater 
 
-
+# 💀 💀  WHAT IS DEPENDENCY MANAGEMENT HOW PEOPLE CREATE AND USE IT {7:12:00-7:13:00 SEC TIMIMG MENTION THIS TOPC IN VIDEO RIVAN RANWAT  }
 # =========================
 
 import asyncio
@@ -14,18 +14,22 @@ from typing import Any, AsyncGenerator
 from openai import APIConnectionError, APIError, AsyncOpenAI, RateLimitError
 
 from client.response import (StreamEventType, StreamEvent, TextDelta, TokenUsage, ToolCall, ToolCallDelta,parse_tool_call_arguments)
+from config.config import Config
 
 class LLMClient:
-    def __init__(self)->None :
+    def __init__(self,config: Config)->None :
         self._client : AsyncOpenAI | None = None
         self.max_retries: int =  3
+        self.config = config    
     
     # instance method (Get the initiated client instace)
     def get_client(self)->AsyncOpenAI:
         if self._client is None:
             self._client = AsyncOpenAI(
-                api_key = "kjskjflks",
-                base_url="https://openrouter.ai/api/v1",
+                # api_key = "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",
+                # base_url="https://openrouter.ai/api/v1",
+                api_key = self.config.api_key,
+                base_url=self.config.base_url,
                  default_headers={
         "HTTP-Referer": "http://localhost",
         "X-Title": "Claude Code Agent"
@@ -68,7 +72,8 @@ class LLMClient:
         # print("DEBUG messages:", message)
         kwargs = {
             # "model":"nvidia/nemotron-3-nano-30b-a3b:free",
-            "model": "openrouter/free",
+            # "model": "openrouter/free",
+            "model": self.config.model_name,
             # "model": "nvidia/nemotron-3-nano-30b-a3b:free",
             "messages":message,
             "stream":stream
@@ -105,6 +110,7 @@ class LLMClient:
                     wait_time = 2 ** attempt  # Exponential backoff
                     await asyncio.sleep(wait_time)
                 else:
+                    print("REAL API CONNECTION ERROR:", e)
                     yield StreamEvent(  
                     type = StreamEventType.ERROR,
                     error = f"API connection error after {self.max_retries} attempts.",

@@ -8,14 +8,16 @@ from typing import AsyncGenerator
 from agent.events import AgentEvent, AgentEventType
 from client.llm_client2 import LLMClient
 from client.response import StreamEventType, ToolCall, ToolResultMessage
+from config.config import Config
 from context.manager import ContextManager
 from tools.registry import create_default_registry
 
 
 class Agent:
-    def __init__(self):
-        self.client = LLMClient()
-        self.context_manager = ContextManager()
+    def __init__(self,config: Config):
+        self.config = config
+        self.client = LLMClient(config=self.config)
+        self.context_manager = ContextManager(config=self.config)
         self.tool_registry = create_default_registry()
     async def run(self, message:str):
         yield AgentEvent.agent_start(message)
@@ -35,85 +37,95 @@ class Agent:
     async def _agentic_loop(self)->AsyncGenerator[AgentEvent,None]:
         # messages=[{"role":"user","content":"Hello, how are you?"  }]
 
-        response_text = ""
+        max_turns = self.config.max_turns
 
-        tool_calls:list[ToolCall] = []
+        for turn_num in range(max_turns):
 
-        tool_schemas = self.tool_registry.get_schemas()
-        async for event in self.client.chat_completion(
-            self.context_manager.get_messages(),
-            tools = tool_schemas if tool_schemas else None,
-            stream=True 
-        ):
+            response_text = ""
 
-            # print(event)
-            if event.type == StreamEventType.TEXT_DELTA:
-                if event.text_delta:
-                    content  = event.text_delta.content 
-                    response_text += content or ""
-                    yield AgentEvent.text_delta(content)
-            elif event.type == StreamEventType.TOOL_CALL_COMPLETE:
-                if event.tool_call:
-                    tool_calls.append(event.tool_call)
-            elif event.type == StreamEventType.ERROR:
-                yield AgentEvent.agent_error(event.error or "Unknown error occured")
-               
-        self.context_manager.add_assistant_message(
-            response_text or None,
-            [
-                {
-                "id":tc.call_id,
-                "type":"function",
-                "function":{
-                    "name":tc.name,
-                    "arguments":str(tc.arguments),
-                },
-                }
-                for tc in tool_calls
+            tool_calls:list[ToolCall] = []
 
-            ]
-        
-            )
-        if response_text:
-            yield AgentEvent.text_complete(response_text)
-        
-        tool_call_result:list[ToolResultMessage] = []  
+            tool_schemas = self.tool_registry.get_schemas()
+            async for event in self.client.chat_completion(
+                self.context_manager.get_messages(),
+                tools = tool_schemas if tool_schemas else None,
+                stream=True 
+            ):
 
-        
-        for tool_call in tool_calls:
-        # displaying to the uswrs when tool call start and what are the arguments for that tool call
-            print(f"DEBUG tool_call.arguments: {tool_call.arguments}")
-            yield AgentEvent.tool_call_start(
-                call_id=tool_call.call_id,
-                name=tool_call.name or "unknown_tool",
-                arguments=tool_call.arguments or {}
-             )
+                # print(event)
+                if event.type == StreamEventType.TEXT_DELTA:
+                    if event.text_delta:
+                        content  = event.text_delta.content 
+                        response_text += content or ""
+                        yield AgentEvent.text_delta(content)
+                elif event.type == StreamEventType.TOOL_CALL_COMPLETE:
+                    if event.tool_call:
+                        tool_calls.append(event.tool_call)
+                elif event.type == StreamEventType.ERROR:
+                    yield AgentEvent.agent_error(event.error or "Unknown error occured")
+                
+            self.context_manager.add_assistant_message(
+                response_text or None,
+                [
+                    {
+                    "id":tc.call_id,
+                    "type":"function",
+                    "function":{
+                        "name":tc.name,
+                        "arguments":str(tc.arguments),
+                    },
+                    }
+                    for tc in tool_calls
+
+                ]
             
-             # This result may be success or failoour{error}
-            result = await self.tool_registry.invoke(
-                tool_call.name ,
-                tool_call.arguments,
-                Path.cwd()
-            ) 
+                )
+            if response_text:
+                yield AgentEvent.text_complete(response_text)
+
+            # If no tool calls to do it means return from turn loop {what pydentic ai also do}
+            if not tool_calls:
+                return
+
             
-            yield AgentEvent.tool_call_complete(
-                tool_call.call_id,
-                tool_call.name,
-                result,
-            )
+            tool_call_result:list[ToolResultMessage] = []  
 
-            tool_call_result.append(ToolResultMessage(
-                tool_call_id=tool_call.call_id,
-                content= result.to_model_output(),
-                error= not result.success
+            
+            for tool_call in tool_calls:
+            # displaying to the uswrs when tool call start and what are the arguments for that tool call
+                print(f"DEBUG tool_call.arguments: {tool_call.arguments}")
+                yield AgentEvent.tool_call_start(
+                    call_id=tool_call.call_id,
+                    name=tool_call.name or "unknown_tool",
+                    arguments=tool_call.arguments or {}
+                )
+                
+                # This result may be success or failoour{error}
+                result = await self.tool_registry.invoke(
+                    tool_call.name ,
+                    tool_call.arguments,
+                    # Path.cwd()
+                    self.config.cwd,
+                ) 
+                
+                yield AgentEvent.tool_call_complete(
+                    tool_call.call_id,
+                    tool_call.name,
+                    result,
+                )
 
-            ))
-        
-        for tool_result in tool_call_result:
-            self.context_manager.add_tool_result(
-                tool_result.tool_call_id,
-                tool_result.content
-            )
+                tool_call_result.append(ToolResultMessage(
+                    tool_call_id=tool_call.call_id,
+                    content= result.to_model_output(),
+                    error= not result.success
+
+                ))
+            
+            for tool_result in tool_call_result:
+                self.context_manager.add_tool_result(
+                    tool_result.tool_call_id,
+                    tool_result.content
+                )
 
 
 
@@ -134,3 +146,6 @@ class Agent:
 
 
 # 💁💁💁💁💁💁💁💁💁💁💁💁 4:34:000 / 4:35:22
+
+
+# 7:27:00     turn

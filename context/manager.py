@@ -3,6 +3,7 @@
 from dataclasses import  dataclass, field
 
 from typing import Any
+from config.config import Config
 from prompts.system import get_system_prompt
 from utils.text import count_tokens
 
@@ -33,11 +34,12 @@ class MessageItem:
         return result
 
 class ContextManager:
-    def __init__(self):
-        self._system_prompt = get_system_prompt()
+    def __init__(self,config:Config):
+        self._system_prompt = get_system_prompt(config)
         self._messages:list[MessageItem] = []
+        self.config = config
         # self._model_name = 'nvidia/nemotron-3-nano-30b-a3b:free'  # Currentaly I hardcoded this letter Itake it from config
-        self._model_name = 'openrouter/free'  # Currentaly I hardcoded this letter Itake it from config
+        self._model_name = self.config.model_name  # Currentaly I hardcoded this letter Itake it from config
         # self._model_name = 'nvidia/nemotron-3-nano-30b-a3b:free'  # Currentaly I hardcoded this letter Itake it from config
 
     def add_user_message(self,content:str)->None:

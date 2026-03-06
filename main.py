@@ -39,6 +39,8 @@ from agent.events import AgentEventType
 from client.llm_client2 import LLMClient
 import click
 
+from config.config import Config
+from config.loader import load_config
 from ui.tui import TUI, get_console
 
 
@@ -68,13 +70,14 @@ console = get_console()
 #                 self.tui.stream_assistant_delta(content)
 class CLI:
 
-    def __init__(self):
+    def __init__(self,config: Config):
         self.agent: Agent | None = None
-        self.tui = TUI(console=console)
+        self.config = config
+        self.tui = TUI(config,console)
 
     async def run_single(self, message: str) -> None:
-
-        async with Agent() as agent:
+ 
+        async with Agent(config=self.config) as agent:
 
             self.agent = agent
 
@@ -85,14 +88,15 @@ class CLI:
         self.tui.print_welcome(
             "AI Agent",
             lines=[
-                f"model: openrouter/free",
+                # f"model: openrouter/free",
+                f"model: {self.config.model_name}",
                 # f"model: nvidia/nemotron-3-nano-30b-a3b:free",
-                f"cwd: {Path.cwd()}",
+                f"cwd: {self.config.cwd}",
                 "commands: /help /config /approval /model /exit",
             ],
         )
 
-        async with Agent() as agent:
+        async with Agent(config=self.config) as agent:
 
             self.agent = agent
             while True: # It is infinite loop to intract in cli 
@@ -200,8 +204,28 @@ class CLI:
 
 @click.command()
 @click.argument("prompt",required=False)
-def main(prompt:str|None):
-    cli = CLI()
+@click.option(
+    "--cwd",
+    "-c",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    help="Current working directory",
+)
+def main(prompt:str|None,cwd:Path|None):
+    try:
+        config = load_config(cwd=cwd)
+    except Exception as e:
+        console.print(f"[error]Configuration Error: {e}[/error]")
+
+    errors = config.validate()
+
+    if errors:
+        for error in errors:
+            console.print(f"[error]{error}[/error]")
+
+        sys.exit(1)
+    cli = CLI(config=config)
+
+
     # messages=[
     #         {"role":"user","content":prompt}
     #     ]
@@ -219,6 +243,10 @@ main()
 
 
 
+
+#  HOW TO RUN 
+# set API_KEY=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
+# set BASE_URL => set BASE_URL=https://openrouter.ai/api/v1  {iF NEED OTHER WISE IT TAKE IT FROM TOMAL FILE SYSTEM OR PROJECT LEVEL}
 
 
 

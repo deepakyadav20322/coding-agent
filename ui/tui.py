@@ -13,6 +13,7 @@ from rich.console import Group
 
 from rich import box
 
+from config.config import Config
 from utils.paths import display_path_rel_to_cwd, resolve_path
 from utils.text import truncate_text
 
@@ -53,11 +54,13 @@ def get_console() -> Console:
 
 
 class TUI:
-    def __init__(self,console:Console | None = None):
+    def __init__(self,config: Config,console:Console | None = None):
         self.console = console or get_console()
         self._assistant_stream_open = False
+        self.config = config
         self._tool_args_by_call_id :dict[str,dict[str,Any]] = {}
-        self.cwd = Path.cwd()
+        # self.cwd = Path.cwd()
+        self.cwd = self.config.cwd
 
     def begin_assistant(self)->None:
         self.console.print()
