@@ -7,6 +7,7 @@
 from os import name
 from pathlib import Path
 from typing import Any, List
+from config.config import Config
 from tools.base import Tool, ToolInvocation, ToolResult
 from tools.builtin import ReadFileTool, get_all_builtin_tools
 import logging
@@ -14,8 +15,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 class ToolRegistry:
-    def __init__(self):
+    def __init__(self,config: Config):
         self._tools:dict[str,Tool] = {}   # default value is empty dictonary
+        self.config = config
 
     def register(self,tool:Tool)->None:
         if tool.name in self._tools:
@@ -93,8 +95,8 @@ class ToolRegistry:
         return result
 
 # This is a global function which used to create an global funtion form where we register all tools (It is like singleton instance)
-def create_default_registry()->ToolRegistry:
-    registry = ToolRegistry()
+def create_default_registry(config: Config)->ToolRegistry:
+    registry = ToolRegistry(config)
 
     for tool_class in get_all_builtin_tools():
         registry.register(tool_class())
