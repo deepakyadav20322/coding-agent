@@ -119,7 +119,7 @@ class CLI:
 
     def _get_tool_kind(self, tool_name: str) -> str | None:
         tool_kind = None
-        tool = self.agent.tool_registry.get(tool_name)
+        tool = self.session.agent.tool_registry.get(tool_name)
         if not tool:
             tool_kind = None
 
@@ -243,6 +243,10 @@ main()
 
 
 
+# FOR WINDOWS [it diff for mac/linux] {system level config.tomel file where required config defined}
+# "C:\Users\DEEPAK YADAV\AppData\Local\claude-code-type-agent\claude-code-type-agent\config.toml"
+
+
 
 #  HOW TO RUN 
 # set API_KEY=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
@@ -253,3 +257,4 @@ main()
 
 
     # 06:11:00 timing
+    # 07:41:00 max_turn used ehich define in session

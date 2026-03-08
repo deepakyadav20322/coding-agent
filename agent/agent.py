@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import AsyncGenerator
 
 from agent.events import AgentEvent, AgentEventType
+from agent.session import Session
 from client.llm_client2 import LLMClient
 from client.response import StreamEventType, ToolCall, ToolResultMessage
 from config.config import Config
@@ -16,13 +17,18 @@ from tools.registry import create_default_registry
 class Agent:
     def __init__(self,config: Config):
         self.config = config
-        self.client = LLMClient(config=self.config)
-        self.context_manager = ContextManager(config=self.config)
-        self.tool_registry = create_default_registry()
+        # 👇✅we initilize the client, context manager and tool registry in the session because we want to create new instance of those for each session but if we create those in agent then those will be shared across all sessions which is not what we want
+        # self.client = LLMClient(config=self.config)
+        # self.context_manager = ContextManager(config=self.config)
+        # self.tool_registry = create_default_registry()
+        self.session: Session | None = Session(self.config)
+
+
     async def run(self, message:str):
         yield AgentEvent.agent_start(message)
 #   Add user message to the context and send it to the llm client and get the response as stream of events and then convert those events into agent event and yield it to the caller of this function
-        self.context_manager.add_user_message(message)
+# Now use context manger with session to manage the context of the conversation and tool calls and results
+        self.session.context_manager.add_user_message(message)
 
         final_response: str | None = None
         async for event in self._agentic_loop():
@@ -43,11 +49,12 @@ class Agent:
 
             response_text = ""
 
+            tool_schemas = self.session.tool_registry.get_schemas()
+
             tool_calls:list[ToolCall] = []
 
-            tool_schemas = self.tool_registry.get_schemas()
-            async for event in self.client.chat_completion(
-                self.context_manager.get_messages(),
+            async for event in self.session.client.chat_completion(
+                self.session.context_manager.get_messages(),
                 tools = tool_schemas if tool_schemas else None,
                 stream=True 
             ):
@@ -64,7 +71,7 @@ class Agent:
                 elif event.type == StreamEventType.ERROR:
                     yield AgentEvent.agent_error(event.error or "Unknown error occured")
                 
-            self.context_manager.add_assistant_message(
+            self.session.context_manager.add_assistant_message(
                 response_text or None,
                 [
                     {
@@ -101,7 +108,7 @@ class Agent:
                 )
                 
                 # This result may be success or failoour{error}
-                result = await self.tool_registry.invoke(
+                result = await self.session.tool_registry.invoke(
                     tool_call.name ,
                     tool_call.arguments,
                     # Path.cwd()
@@ -122,7 +129,7 @@ class Agent:
                 ))
             
             for tool_result in tool_call_result:
-                self.context_manager.add_tool_result(
+                self.session.context_manager.add_tool_result(
                     tool_result.tool_call_id,
                     tool_result.content
                 )
@@ -132,8 +139,10 @@ class Agent:
     async def __aenter__(self):
         return self
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        if self.client:
-            await self.client.close()
+        if self.session and self.session.client:
+            await self.session.client.close()
+            # self.session.client = None
+            self.session = None
 
                
 
