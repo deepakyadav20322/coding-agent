@@ -46,6 +46,7 @@ class Agent:
         max_turns = self.config.max_turns
 
         for turn_num in range(max_turns):
+            self.session.increment_turn()
 
             response_text = ""
 
