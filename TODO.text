@@ -71,3 +71,16 @@ Add near validate().
 
 TODO:
 # IF you need to add seafty polycy or approveval policy type toggle then you do from configurtion system
+
+
+
+
+
+
+
+
+
+New todo tasks:
+Improve TUI when adding message and show better thinking loader ... 
+TUI break when I do resize then alos fix this .
+Try to add db layer to save session oriented data and context {if fisible}
