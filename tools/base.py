@@ -33,12 +33,45 @@ class ToolInvocation:
     params:dict[str,Any]
     cwd :Path              # it have path of current working directory the used in diffrent way (for example if I go to definde limit file scope the I can first get user permission the proceed that process..  more to do with this)
 
+@dataclass
+class FileDiff:
+    path:Path
+    old_content:str
+    new_content:str
+
+    is_new_file:bool = False
+    is_deletion:bool = False
+
+    def to_diff(self) -> str:
+        import difflib
+
+        old_lines = self.old_content.splitlines(keepends=True)
+        new_lines = self.new_content.splitlines(keepends=True)
+
+        if old_lines and not old_lines[-1].endswith("\n"):
+            old_lines[-1] += "\n"
+        if new_lines and not new_lines[-1].endswith("\n"):
+            new_lines[-1] += "\n"
+
+        old_name = "/dev/null" if self.is_new_file else str(self.path)
+        new_name = "/dev/null" if self.is_deletion else str(self.path)
+
+        diff = difflib.unified_diff(
+            old_lines,
+            new_lines,
+            fromfile=old_name,
+            tofile=new_name,
+        )
+
+        return "".join(diff)
+
 @dataclass 
 class ToolResult:
     success:bool
     output:str
     error:str
     metadata:dict[str,Any] = field(default_factory=dict)
+    diff : FileDiff | None = None
 
     truncated:bool = False
 

@@ -61,6 +61,7 @@ class TUI:
         self._tool_args_by_call_id :dict[str,dict[str,Any]] = {}
         # self.cwd = Path.cwd()
         self.cwd = self.config.cwd
+        self._max_block_token =240
 
     def begin_assistant(self)->None:
         self.console.print()
@@ -78,6 +79,7 @@ class TUI:
     def _ordered_args(self, tool_name: str, args: dict[str, Any]) -> list[tuple]:
         _PREFERRED_ORDER = {
             "read_file": ["path", "offset", "limit"],
+            "write_file": ["path", "create_directories", "content"],
         }
 
         preferred = _PREFERRED_ORDER.get(tool_name, [])
@@ -100,6 +102,14 @@ class TUI:
         table.add_column(style="code",overflow="fold")
 
         for key,value in self._ordered_args(tool_name,args):
+            if isinstance(value, str):
+                if key in {"content", "old_string", "new_string"}:
+                    line_count = len(value.splitlines()) or 0
+                    byte_count = len(value.encode("utf-8", errors="replace"))
+                    value = f"<{line_count} lines • {byte_count} bytes>"
+
+            # if isinstance(value, bool):
+            #     value = str(value)
             table.add_row(key,str(value))
         
         return table
@@ -216,7 +226,7 @@ class TUI:
         )
     
 
-    def tool_call_complete(self,call_id:str,name:str,tool_kind:str,success:bool,output:str|None,error:str|None, metadata:dict[str,Any]|None,truncated:bool): 
+    def tool_call_complete(self,call_id:str,name:str,tool_kind:str,success:bool,output:str|None,error:str|None, metadata:dict[str,Any]|None,diff:str|None,truncated:bool): 
         border_style = f"tool.{tool_kind}" if tool_kind else "tool"
         status_icon = "✓" if success else "✗"
         status_style = "success" if success else "error"
@@ -276,6 +286,24 @@ class TUI:
                     )
                 )
         
+        elif name in {"write_file", "edit"} and success and diff:
+            output_line = output.strip() if output.strip() else "Completed"
+            blocks.append(Text(output_line, style="muted"))
+            diff_text = diff
+            diff_display = truncate_text(
+                diff_text,
+                self.config.model_name,
+                self._max_block_tokens,
+            )
+            blocks.append(
+                Syntax(
+                    diff_display,
+                    "diff",
+                    theme="monokai",
+                    word_wrap=True,
+                )
+            )
+
         if truncated:
             blocks.append(Text("Tool output was truncated]", style="warning"))
 
