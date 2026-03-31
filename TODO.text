@@ -84,3 +84,23 @@ New todo tasks:
 Improve TUI when adding message and show better thinking loader ... 
 TUI break when I do resize then alos fix this .
 Try to add db layer to save session oriented data and context {if fisible}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+======================== Some new direction ====================
+
+1. In codex cli havae patch apply like if want to edit/changes in file then it not make many tool call for multiple line changes in same file but in my current project that is not implemented.

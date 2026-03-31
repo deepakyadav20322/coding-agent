@@ -259,3 +259,4 @@ main()
 
     # 06:11:00 timing
     # 07:41:00 max_turn used ehich define in session
+    # 09:05:29 
