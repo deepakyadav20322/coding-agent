@@ -18,6 +18,8 @@ from typing import Any
 from dataclasses import dataclass ,field
 from pathlib import Path
 
+from config.config import Config
+
 
 class Toolkind(str,Enum):
     READ="read",
@@ -117,7 +119,8 @@ class Tool(abc.ABC):
     description:str = "Base Tool",
     kind:Toolkind  = Toolkind.READ
 
-    def __init__(self)->None:
+    def __init__(self,config:Config)->None:
+        self.config = config
         super().__init__()
 
     @property
