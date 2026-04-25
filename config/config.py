@@ -12,7 +12,7 @@ class ModelConfig(BaseModel):
 class ShellEnvironMentPolicy(BaseModel):
     ignore_default_excludes: bool= False
     exclude_patterns:list[str] = Field(default_factory=lambda:["*KEY*","*TOKEN*","*SECRET*"])
-    set_vars = dict[str,str] = Field(default_factory=dict)  # used to setup the overriding env variables for llm shell context
+    set_vars : dict[str,str] = Field(default_factory=dict)  # used to setup the overriding env variables for llm shell context
 
 class Config(BaseModel):
     model:ModelConfig =  Field(default_factory=ModelConfig)

@@ -193,6 +193,7 @@ class CLI:
                     event.data.get('diff'),
                 \
                     event.data.get("truncated", False),
+                    event.data.get("exit_code")
                    
                 )
 

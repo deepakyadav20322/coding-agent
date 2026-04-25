@@ -80,6 +80,7 @@ class TUI:
         _PREFERRED_ORDER = {
             "read_file": ["path", "offset", "limit"],
             "write_file": ["path", "create_directories", "content"],
+            "shell": ["commond","timeout","cwd"],
         }
 
         preferred = _PREFERRED_ORDER.get(tool_name, [])
@@ -226,7 +227,7 @@ class TUI:
         )
     
 
-    def tool_call_complete(self,call_id:str,name:str,tool_kind:str,success:bool,output:str|None,error:str|None, metadata:dict[str,Any]|None,diff:str|None,truncated:bool): 
+    def tool_call_complete(self,call_id:str,name:str,tool_kind:str,success:bool,output:str|None,error:str|None, metadata:dict[str,Any]|None,diff:str|None,truncated:bool,exit_code:int|None,): 
         border_style = f"tool.{tool_kind}" if tool_kind else "tool"
         status_icon = "✓" if success else "✗"
         status_style = "success" if success else "error"
@@ -237,6 +238,8 @@ class TUI:
             ("  ", "muted"),
             (f"#{call_id[:8]}", "muted"),
         )
+
+        args = self._tool_args_by_call_id.get(call_id,{})
 
         primary_path = None
         blocks = []
@@ -303,7 +306,29 @@ class TUI:
                     word_wrap=True,
                 )
             )
+        
+        elif name == "shell":
+            command  = args.get("commond")
+            if isinstance(command,str) and command.strip():
+                blocks.append(Text(f'${command.strip()}',style="muted"))
+            if exit_code is not None:
+                blocks.append(Text(f'exit_code={exit_code}',style="muted"))
 
+            output_display = truncate_text(
+                output,
+                self.config.model_name,
+                self._max_block_tokens,
+            )
+            blocks.append(
+                Syntax(
+                    output_display,
+                    "text",
+                    theme="monokai",
+                    word_wrap=True,
+                )
+            )
+
+            
         if truncated:
             blocks.append(Text("Tool output was truncated]", style="warning"))
 

@@ -76,6 +76,7 @@ class ToolResult:
     diff : FileDiff | None = None
 
     truncated:bool = False
+    exit_code:int |None =None 
 
     @classmethod
     def error_result(

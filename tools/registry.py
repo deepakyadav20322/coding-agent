@@ -99,7 +99,7 @@ def create_default_registry(config: Config)->ToolRegistry:
     registry = ToolRegistry(config)
 
     for tool_class in get_all_builtin_tools():
-        registry.register(tool_class())
+        registry.register(tool_class(config))
 
     return registry
             
