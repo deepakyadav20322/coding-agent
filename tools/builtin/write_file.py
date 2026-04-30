@@ -56,7 +56,7 @@ class WriteFileTool(Tool):
 
             action = "Created" if is_new_file else "Updated"
             line_count = len(params.content.splitlines())
-            ToolResult.success_result(
+            return ToolResult.success_result(
                 f"{action} {path} {line_count} lines",
                             diff=FileDiff(
                     path=path,

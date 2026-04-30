@@ -4,7 +4,7 @@ from tools.base import Tool, ToolInvocation, ToolResult, Toolkind
 from utils.paths import is_binary_file, resolve_path
 from utils.text import count_tokens, truncate_text
 
-class ReadFileParmas(BaseModel):
+class ReadFileParams(BaseModel):
 
     path:str = Field(...,description = "Pathe to the file to read (relative to the current working directory or absolute)")
 
@@ -21,12 +21,12 @@ class ReadFileTool(Tool):
                  )
     kind= Toolkind.READ
 
-    schema= ReadFileParmas
+    schema= ReadFileParams
 
     MAX_FILE_SIZE = 1024*1024*10  # 10MB
     MAX_OUTPUT_TOKENS = 25000  
     async def execute(self,invocation:ToolInvocation)->ToolResult:
-        params = ReadFileParmas(**invocation.params)
+        params = ReadFileParams(**invocation.params)
         path   = resolve_path(invocation.cwd,params.path) 
 
         if not path.exists():

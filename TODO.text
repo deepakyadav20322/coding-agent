@@ -32,7 +32,7 @@ Add near CLI commands.
 # Similar feature exists in tools like Claude Code and Cursor.
 
 
-
+name = "openrouter/free"
 
 =========================================
 Add near _merge_dicts().

@@ -1,3 +1,4 @@
+from tools.builtin.edit_file import EditFileTool
 from tools.builtin.read_file import ReadFileTool
 from tools.builtin.shell import ShellTool
 from tools.builtin.write_file import WriteFileTool
@@ -12,5 +13,6 @@ def get_all_builtin_tools()->list[type]:
     return[
         ReadFileTool,
         WriteFileTool,
+        EditFileTool,
         ShellTool,
     ]

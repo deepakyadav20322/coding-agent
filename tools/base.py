@@ -113,6 +113,9 @@ class ToolConfirmation:
     params:dict[str,Any]
     description:str
 
+    command: str | None = None
+    is_dangerous: bool = False
+
 
 
 class Tool(abc.ABC):
@@ -172,7 +175,7 @@ class Tool(abc.ABC):
         if not self.is_mutating(invocation.params) :
             return None
         
-        ToolConfirmation(
+        return ToolConfirmation(
             tool_name=self.name,
             params=invocation.params,
             description=f"Execute {self.name}",

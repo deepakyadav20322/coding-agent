@@ -119,7 +119,7 @@ class CLI:
 
     def _get_tool_kind(self, tool_name: str) -> str | None:
         tool_kind = None
-        tool = self.session.agent.tool_registry.get(tool_name)
+        tool = self.agent.session.tool_registry.get(tool_name)
         if not tool:
             tool_kind = None
 
@@ -167,7 +167,9 @@ class CLI:
             elif event.type == AgentEventType.TOOL_CALL_START:
                 tool_name =  event.data.get("name","unknown")
                 tool_kind = None
-                tool = self.agent.tool_registry.get(tool_name)
+                # tool = self.agent.tool_registry.get(tool_name)
+                tool = self.agent.session.tool_registry.get(tool_name)
+                print(type(self.agent.session.tool_registry))
                 if not tool:
                     tool_kind = None
                 

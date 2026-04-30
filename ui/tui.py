@@ -61,7 +61,7 @@ class TUI:
         self._tool_args_by_call_id :dict[str,dict[str,Any]] = {}
         # self.cwd = Path.cwd()
         self.cwd = self.config.cwd
-        self._max_block_token =240
+        self._max_block_tokens =240
 
     def begin_assistant(self)->None:
         self.console.print()
@@ -80,6 +80,7 @@ class TUI:
         _PREFERRED_ORDER = {
             "read_file": ["path", "offset", "limit"],
             "write_file": ["path", "create_directories", "content"],
+            "edit": ["path", "replace_all", "old_string", "new_string"],
             "shell": ["commond","timeout","cwd"],
         }
 
@@ -328,7 +329,7 @@ class TUI:
                 )
             )
 
-            
+
         if truncated:
             blocks.append(Text("Tool output was truncated]", style="warning"))
 

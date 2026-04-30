@@ -33,11 +33,25 @@ class ToolRegistry:
             return True
         
         return False
-    
+
+    # Previous version -> 
+    # def get(self, name: str) -> Tool | None:
+    #     if name in self._tools:
+    #         return self._tools[name]
+    #     elif name in self._mcp_tools:
+    #         return self._mcp_tools[name]
+
+    #     return None
+
+    # New version with lazy loading of mcp tools (It means that we will create mcp tool instance only when we need it for the first time and store it in _mcp_tools dictionary for future use)
     def get(self, name: str) -> Tool | None:
+        if not hasattr(self, "_mcp_tools"):
+            self._mcp_tools = {}
+
         if name in self._tools:
             return self._tools[name]
-        elif name in self._mcp_tools:
+
+        if name in self._mcp_tools:
             return self._mcp_tools[name]
 
         return None
@@ -63,7 +77,7 @@ class ToolRegistry:
         if tool is None:
             return ToolResult.error_result(
                 f"Unknown tool {name}",
-                metaData={"tool_name":name},
+                metadata={"tool_name":name},
             )
         
         # when tools call then it definatly have it's requred parameter I am here validate those before actual invoking/excuting work and validate params return list of string if validations fail other wise empty list.
