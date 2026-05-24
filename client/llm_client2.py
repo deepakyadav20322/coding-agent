@@ -199,13 +199,13 @@ class LLMClient:
                                 ) )
                             
                     if tool_call_delta.function.arguments:
-                        print(
-                                f"Before append arguments: {tool_calls[idx]['arguments']}"
-                            )
+                        # print(
+                        #         f"Before append arguments: {tool_calls[idx]['arguments']}"
+                        #     )
                         tool_calls[idx]['arguments'] += tool_call_delta.function.arguments
-                        print(
-                f"After append arguments: {tool_calls[idx]['arguments']}"
-            )
+            #             print(
+            #     f"After append arguments: {tool_calls[idx]['arguments']}"
+            # )
                         yield StreamEvent(
                             type=StreamEventType.TOOL_CALL_DELTA,
                             tool_call_delta=ToolCallDelta(
@@ -215,7 +215,7 @@ class LLMClient:
                             )
                         )
         for idx, tc in tool_calls.items():
-            print(f"DEBUG final tool_calls dict: {tool_calls}")  # ← add this
+            # print(f"DEBUG final tool_calls dict: {tool_calls}")  # ← add this
             yield StreamEvent(
                 type=StreamEventType.TOOL_CALL_COMPLETE,
                 tool_call=ToolCall(
