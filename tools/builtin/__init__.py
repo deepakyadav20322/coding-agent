@@ -1,4 +1,5 @@
 from tools.builtin.edit_file import EditFileTool
+from tools.builtin.glob import GlobTool
 from tools.builtin.grep import GrepTool
 from tools.builtin.list_dir import ListDirTool
 from tools.builtin.read_file import ReadFileTool
@@ -12,6 +13,7 @@ __all__ = [
     "ShellTool",
     "ListDirTool",
     "GrepTool",
+     "GlobTool",
     
 
 ]
@@ -24,4 +26,5 @@ def get_all_builtin_tools()->list[type]:
         ShellTool,
         ListDirTool,
         GrepTool,
+        GlobTool,
     ]
