@@ -61,7 +61,7 @@ class TUI:
         self._tool_args_by_call_id :dict[str,dict[str,Any]] = {}
         # self.cwd = Path.cwd()
         self.cwd = self.config.cwd
-        self._max_block_tokens =240
+        self._max_block_tokens =800
 
     def begin_assistant(self)->None:
         self.console.print()
@@ -312,7 +312,7 @@ class TUI:
             )
         
         elif name == "shell":
-            command  = args.get("commond")
+            command  = args.get("command")
             if isinstance(command,str) and command.strip():
                 blocks.append(Text(f'${command.strip()}',style="muted"))
             if exit_code is not None:
@@ -428,6 +428,35 @@ class TUI:
                 )
             )
 
+        elif name == "web_fetch" and success:
+            status_code = metadata.get("status_code")
+            content_length = metadata.get("content_length")
+            url = args.get("url")
+            summary = []
+            if isinstance(status_code, int):
+                summary.append(str(status_code))
+            if isinstance(content_length, int):
+                summary.append(f"{content_length} bytes")
+            if isinstance(url, str):
+                summary.append(url)
+
+            if summary:
+                blocks.append(Text(" • ".join(summary), style="muted"))
+
+            output_display = truncate_text(
+                output,
+                self.config.model_name,
+                self._max_block_tokens,
+            )
+            blocks.append(
+                Syntax(
+                    output_display,
+                    "text",
+                    theme="monokai",
+                    word_wrap=True,
+                )
+            )
+
         if error and not success:
             blocks.append(Text("Error:", style="error"))
 
@@ -445,7 +474,7 @@ class TUI:
                 blocks.append(Text("(no output)", style="muted"))
 
         if truncated:
-            blocks.append(Text("note: Tool output was truncated]", style="warning"))
+            blocks.append(Text("note: Tool output was truncated", style="warning"))
 
         panel = Panel(
             Group(
