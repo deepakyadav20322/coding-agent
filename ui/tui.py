@@ -85,6 +85,7 @@ class TUI:
              "list_dir": ["path", "include_hidden"],
             "grep":["path","case_insenstive","pattern"], 
             "glob": ["path", "pattern"],
+            "todos": ["id", "action", "content"],
         }
 
         preferred = _PREFERRED_ORDER.get(tool_name, [])
@@ -456,6 +457,21 @@ class TUI:
                     word_wrap=True,
                 )
             )
+
+        elif name == "todos" and success:
+            output_display = truncate_text(
+                output,
+                self.config.model_name,
+                self._max_block_tokens,
+            )
+            blocks.append(
+                Syntax(
+                    output_display,
+                    "text",
+                    theme="monokai",
+                    word_wrap=True,
+                )
+        )
 
         if error and not success:
             blocks.append(Text("Error:", style="error"))

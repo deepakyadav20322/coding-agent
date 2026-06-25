@@ -49,7 +49,7 @@ class TodosTool(Tool):
             lines = ['Todos:']
             for todo_id ,content in self._todos.items():
                  lines.append(f"   [{todo_id}] {content}")
-            ToolResult.success_result("\n".join(lines))
+            return ToolResult.success_result("\n".join(lines))
         elif params.action.lower() =="clear":
             count = len(self._todos)
             self._todos.clear()
