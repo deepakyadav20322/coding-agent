@@ -2,7 +2,7 @@
 from pathlib import Path
 from typing import Any
 from config.config import Config
-from platformdirs import user_config_dir
+from platformdirs import user_config_dir, user_data_dir
 import tomli
 from utils.errors import ConfigError 
 import logging
@@ -23,6 +23,8 @@ def get_config_dir()->Path:
     # config_dir.mkdir(parents=True, exist_ok=True)
     return Path(user_config_dir("claude-code-type-agent"))
 
+def get_data_directory()->Path:
+    return Path(user_data_dir("claude-code-type-agent"))
 
 # system related configuration
 def get_system_config_path()->Path:
