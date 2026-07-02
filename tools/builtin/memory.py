@@ -1,11 +1,7 @@
 
-
-
-
-from dataclasses import Field
 import json
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from config.loader import get_data_directory
 from tools.base import Tool, ToolInvocation, ToolResult, Toolkind
@@ -67,3 +63,55 @@ class MemoryTool(Tool):
             return ToolResult.success_result(
                 f"Set memory: {params.key}"
             )
+        
+        elif params.action == "get":
+            if not params.key:
+                return ToolResult.error_result(f"Key is reqiored for `get` action")
+            memory = self._load_memory()
+            if params.key not in memory.get("entries", {}):
+                return ToolResult.success_result(f"Memory not found: {params.key}",metadata={
+                        "found": False,
+                    },)
+            return ToolResult.success_result(f"Memory found: {params.key}: {memory['entries'].get(params.key)}", metadata={
+                        "found": True,
+                    },)
+        
+        elif params.action == "delete":
+            if not params.key:
+                return ToolResult.error_result(f"Key is required for `delete` action")
+            memory = self._load_memory()
+            if params.key not in memory.get("entries", {}):
+                return ToolResult.success_result(f"Memory not found: {params.key}")
+            memory["entries"].pop(params.key)
+            self._save_memory(memory)
+            return ToolResult.success_result(f"Memory deleted: {params.key}") 
+        
+        elif params.action == "list":
+            memory = self._load_memory()
+            entries = memory.get("entries", {})
+            if not entries:
+                return ToolResult.success_result("No memories found", metadata={
+                        "found": False,
+                    },)
+            lines = [f"Stored memories:"]
+            for key, value in entries.items():
+                lines.append(f"- {key}: {value}")
+            return ToolResult.success_result("\n".join(lines), metadata={
+                        "found": True,
+                    },)
+        elif params.action == "clear":
+            memory = self._load_memory()
+            count = len(memory.get("entries",{}))
+            memory["entries"] = {}
+            self._save_memory()
+            return ToolResult.success_result(f"cleared {count} memory entries")
+            
+        else:
+            return ToolResult.error_result(f"Unknown action: {params.action}")
+        
+            
+            
+
+            
+
+            

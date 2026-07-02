@@ -34,8 +34,8 @@ class MessageItem:
         return result
 
 class ContextManager:
-    def __init__(self,config:Config):
-        self._system_prompt = get_system_prompt(config)
+    def __init__(self,config:Config,user_memory:str | None):
+        self._system_prompt = get_system_prompt(config,user_memory)
         self._messages:list[MessageItem] = []
         self.config = config
         # self._model_name = 'nvidia/nemotron-3-nano-30b-a3b:free'  # Currentaly I hardcoded this letter Itake it from config

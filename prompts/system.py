@@ -2,6 +2,7 @@ from config.config import Config
 
 def get_system_prompt(
           config: Config,
+          user_memory: str |None =None
 ) -> str:
     parts = []
 
@@ -22,6 +23,9 @@ def get_system_prompt(
 
     if config.user_instructions:
         parts.append(_get_user_instructions_section(config.user_instructions))
+
+    if user_memory is not None:
+        parts.append(_get_memory_section(user_memory))
 
      # Operational guidelines
     parts.append(_get_operational_section())
@@ -158,6 +162,17 @@ If completing the user's task requires writing or modifying files, your code and
 - Do not add inline comments within code unless explicitly requested.
 - Do not use one-letter variable names unless explicitly requested."""
 
+
+
+def _get_memory_section(memory: str) -> str:
+    """Generate user memory section."""
+    return f"""# Remembered Context
+
+The following information has been stored from previous interactions:
+
+{memory}
+
+Use this information to personalize your responses and maintain consistency."""
 
 
 

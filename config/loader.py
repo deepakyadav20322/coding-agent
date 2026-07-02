@@ -15,6 +15,10 @@ logger = logging.getLogger(__name__)
 
 CONFIG_FILE_NAME = "config.toml"
 AGENT_MD_FILE = "AGENT.MD"
+
+def get_data_dir() -> Path:
+    return Path(user_config_dir("claude-code-type-agent"))
+
 # user related configuration
 def get_config_dir()->Path:
     # TODO:
