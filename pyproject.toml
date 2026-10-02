@@ -1,15 +1,15 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "codeagent-cli"
-version = "0.3.1"
+version = "0.4.0"
 description = "A local CLI coding agent."
 readme = "README.MD"
 requires-python = ">=3.10"
 authors = [{ name = "Deepak Yadav" }]
-license = { text = "MIT" }
+license = "MIT"
 keywords = ["ai", "coding", "agent", "cli", "llm"]
 
 dependencies = [
@@ -26,23 +26,11 @@ dependencies = [
 ]
 
 [project.scripts]
-# This is the line that creates the global `codeagent` command.
-# When the package is installed, pip generates an executable that
-# imports `main.py` and calls its `main` function.
-codeagent = "main:main"
+# Creates the global `codeagent` command. When the package is installed,
+# pip generates an executable that runs codeagent/main.py -> main().
+codeagent = "codeagent.main:main"
 
-# Tell setuptools exactly which top-level folders are packages to install.
-# (We're keeping your current flat layout instead of nesting under one folder.)
-[tool.setuptools]
-packages = [
-    "agent",
-    "client",
-    "config",
-    "context",
-    "prompts",
-    "tools",
-    "tools.builtin",
-    "ui",
-    "utils",
-]
-py-modules = ["main"]
+# All code lives inside the single `codeagent` package, so nothing generic
+# like `config` or `utils` gets installed at the top level of site-packages.
+[tool.setuptools.packages.find]
+include = ["codeagent*"]

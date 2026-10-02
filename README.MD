@@ -4,6 +4,36 @@ A terminal-based AI coding agent built from start in Python — designed to auto
 
 ---
 
+## package Installation
+
+```
+pip install codeagent-cli
+codeagent login
+codeagent
+```
+
+Get an API key at https://openrouter.ai/keys. If your key expires, run
+`codeagent login` again (or type `/login` inside a session).
+
+
+## Setting or updating your API key
+
+1. Create a key at https://openrouter.ai/keys
+2. Save it once (stored in your user config folder, works from any directory):
+
+```
+   codeagent login
+```
+
+   Already inside a session? Type `/login` instead. No restart needed.
+
+3. If your key expires or is revoked, codeagent shows an "API key was rejected"
+   message. Repeat steps 1–2.
+
+Note: an `API_KEY` environment variable overrides the saved key. If you set one
+before, remove it (Windows: `setx API_KEY ""` then open a new terminal;
+macOS/Linux: `unset API_KEY`), or just update it with the new key.
+
 ## Table of Contents
 
 - [Overview](#overview)
@@ -136,7 +166,7 @@ claude-type-agent/
 
 ---
 
-## Setup & Installation
+## LOcal Setup & Installation
 
 **1. Clone the repository**
 
