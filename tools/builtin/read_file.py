@@ -88,15 +88,15 @@ class ReadFileTool(Tool):
             if token_counts > self.MAX_OUTPUT_TOKENS:  # In this case we need to truncate the text
                 output = truncate_text(
                     output,
+                    self.config.model_name,
                     self.MAX_OUTPUT_TOKENS,
-                    suffix=f"\n... [truncated {total_lines} total lines]",
-                    
+                    suffix=f"\n... [truncated {total_lines} total lines]"
                 )
                 truncated = True
 
             metadata_lines  = []
             if start_idx>0 and end_idx < total_lines:
-                metadata_lines.append(f"showing Lines {start_idx+1}-{end_idx} of {total_lines}")
+                metadata_lines.append(f"Showing lines {start_idx+1}-{end_idx} of {total_lines}")
             
             if metadata_lines:
                 header = " | ".join(metadata_lines) + "\n\n" # these aew used to show users then do good things

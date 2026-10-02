@@ -6,6 +6,7 @@ import fnmatch
 import os
 from pathlib import Path
 import sys
+import signal
 
 from tools.base import Tool, ToolConfirmation, ToolInvocation, ToolResult, Toolkind
 from pydantic import BaseModel , Field
@@ -111,13 +112,23 @@ class ShellTool(Tool):
                 process.communicate(),
                 timeout=params.timeout,
             )
+            
+        # BEFORE
+        # except asyncio.TimeoutError:
+        #     if sys.platform != "win32":
+        #         os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+        #     else:
+        #         process.kill()
+        #     await process.wait()
+        #     return ToolResult.error_result(f"Command timed out after {params.timeout}s")
+
+        # AFTER
         except asyncio.TimeoutError:
-            if sys.platform != "win32":
-                os.killpg(os.getpgid(process.pid), signal.SIGKILL)
-            else:
-                process.kill()
-            await process.wait()
-            return ToolResult.error_result(f"Command timed out after {params.timeout}s")
+            await self._kill_process_tree(process)
+            return ToolResult.error_result(
+                f"Command timed out after {params.timeout}s and was terminated",
+                metadata={"timed_out": True},
+            )
 
         stdout = stdout_data.decode("utf-8", errors="replace")
         stderr = stderr_data.decode("utf-8", errors="replace")
@@ -143,6 +154,42 @@ class ShellTool(Tool):
             error=stderr if exit_code != 0 else None,
             exit_code=exit_code,
         )
+
+
+    async def _kill_process_tree(self, process: asyncio.subprocess.Process) -> None:
+        """Kill the shell AND every child it started (npm, python, servers...)."""
+        if process.returncode is not None:
+            return  # already exited
+
+        tree_killed = False
+        try:
+            if sys.platform == "win32":
+                # process.kill() only kills cmd.exe; /T kills the whole tree.
+                killer = await asyncio.create_subprocess_exec(
+                    "taskkill", "/F", "/T", "/PID", str(process.pid),
+                    stdout=asyncio.subprocess.DEVNULL,
+                    stderr=asyncio.subprocess.DEVNULL,
+                )
+                tree_killed = (await killer.wait()) == 0
+            else:
+                # start_new_session=True put the shell in its own process
+                # group, so killing the group kills all its children too.
+                os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+                tree_killed = True
+        except (ProcessLookupError, PermissionError, OSError):
+            pass  # process ended between the timeout and the kill
+
+        # Fallback: kill at least the shell itself if the tree kill failed.
+        if not tree_killed:
+            try:
+                process.kill()
+            except ProcessLookupError:
+                pass
+
+        try:
+            await asyncio.wait_for(process.wait(), timeout=5)
+        except asyncio.TimeoutError:
+            pass
 
     def _build_environment(self) -> dict[str, str]:
         env = os.environ.copy() # I am copy the environment because I want sahallow copy to override some env key like NODE_ENV

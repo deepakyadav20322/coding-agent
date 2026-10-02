@@ -22,7 +22,7 @@ def display_path_rel_to_cwd(path:str,cwd:Path|None)->str:
             return str(p.relative_to(cwd))
         except:
             pass
-    return(p)
+    return str(p)
 
 
 def ensure_parent_directory(path :str | Path)->Path:

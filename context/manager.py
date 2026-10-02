@@ -5,6 +5,7 @@ from dataclasses import  dataclass, field
 from typing import Any
 from config.config import Config
 from prompts.system import get_system_prompt
+from tools.base import Tool
 from utils.text import count_tokens
 
 @dataclass
@@ -34,8 +35,8 @@ class MessageItem:
         return result
 
 class ContextManager:
-    def __init__(self,config:Config):
-        self._system_prompt = get_system_prompt(config)
+    def __init__(self,config:Config,user_memory:str | None,tools: list[Tool]|None= None):
+        self._system_prompt = get_system_prompt(config,user_memory,tools)
         self._messages:list[MessageItem] = []
         self.config = config
         # self._model_name = 'nvidia/nemotron-3-nano-30b-a3b:free'  # Currentaly I hardcoded this letter Itake it from config
@@ -60,7 +61,7 @@ class ContextManager:
     def add_assistant_message(
             self,
             content:str,
-            tool_calls:list[dict[str,any]] | None = None,        # this used to mentain and aware about tool calls and it's content in context also with assistance and user  messages 
+            tool_calls:list[dict[str,any]] | None = None       # this used to mentain and aware about tool calls and it's content in context also with assistance and user  messages 
             )->None:
         item = MessageItem(
             role="assistant",

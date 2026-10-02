@@ -2,6 +2,7 @@
 # if you have multiple sessions then you have multiple context manager
 
 
+import json
 from pathlib import Path
 from typing import AsyncGenerator
 
@@ -71,6 +72,9 @@ class Agent:
                         tool_calls.append(event.tool_call)
                 elif event.type == StreamEventType.ERROR:
                     yield AgentEvent.agent_error(event.error or "Unknown error occured")
+                    # Stop this turn. Don't save an empty assistant message into
+                    # the context, and don't loop again with the same bad key.
+                    return
                 
             self.session.context_manager.add_assistant_message(
                 response_text or None,
@@ -80,7 +84,14 @@ class Agent:
                     "type":"function",
                     "function":{
                         "name":tc.name,
-                        "arguments":str(tc.arguments),
+                        # "arguments":str(tc.arguments),
+                        "arguments":json.dumps
+                        
+                        
+                        
+                        
+
+                        (tc.arguments),
                     },
                     }
                     for tc in tool_calls

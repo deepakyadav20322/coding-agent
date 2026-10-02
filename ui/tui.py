@@ -85,6 +85,8 @@ class TUI:
              "list_dir": ["path", "include_hidden"],
             "grep":["path","case_insenstive","pattern"], 
             "glob": ["path", "pattern"],
+             "todos": ["id", "action", "content"],
+             "memory": ["action", "key", "value"],
         }
 
         preferred = _PREFERRED_ORDER.get(tool_name, [])
@@ -173,7 +175,12 @@ class TUI:
             # 2| print()
             m = re.match(r"^\s*(\d+)\|(.*)$", line)
             if not m:
+                # Non-code lines (e.g. "... [truncated 900 total lines]") are
+                # skipped instead of failing the whole parse.
+                if start_line is not None and line.lstrip().startswith("..."):
+                    continue
                 return None
+                
             line_no = int(m.group(1))
             if start_line is None:
                 start_line = line_no
@@ -216,8 +223,32 @@ class TUI:
             ".xml": "xml",
             ".sql": "sql",
         }.get(suffix, "text")
+
+    def show_error(self, message: str, title: str = "Error") -> None:
+        # Text() renders the message literally, so brackets in provider
+        # messages can't be misread as rich markup.
+        self.console.print()
+        self.console.print(
+            Panel(
+                Text(message),
+                title=Text(title, style="error"),
+                title_align="left",
+                border_style="red",
+                box=box.ROUNDED,
+                padding=(1, 2),
+            )
+    )
+    
     
     def print_welcome(self, title: str, lines: list[str]) -> None:
+
+        # Print the big "CODE AGENT" ASCII banner first.
+        # Imported lazily so this module stays light and the banner can be
+        # tweaked without touching tui.py again.
+        from ui.banner import render_banner
+        render_banner(self.console)
+        
+
         body = "\n".join(lines)
         self.console.print(
             Panel(
@@ -229,8 +260,8 @@ class TUI:
                 padding=(1, 2),
             )
         )
-    
 
+     
     def tool_call_complete(self,call_id:str,name:str,tool_kind:str,success:bool,output:str|None,error:str|None, metadata:dict[str,Any]|None,diff:str|None,truncated:bool,exit_code:int|None,): 
         border_style = f"tool.{tool_kind}" if tool_kind else "tool"
         status_icon = "✓" if success else "✗"
@@ -251,8 +282,11 @@ class TUI:
             primary_path = metadata.get("path")
 
         if name == "read_file" and success:
-            if primary_path:
-                start_line, code = self._extract_read_file_code(output)
+            # if primary_path:
+            #     start_line, code = self._extract_read_file_code(output)
+            parsed = self._extract_read_file_code(output) if primary_path else None
+            if parsed:
+                start_line, code = parsed
 
                 shown_start = metadata.get("shown_start")
                 shown_end = metadata.get("shown_end")
@@ -457,6 +491,49 @@ class TUI:
                 )
             )
 
+        elif name == "todos" and success:
+            output_display = truncate_text(
+                output,
+                self.config.model_name,
+                self._max_block_tokens,
+            )
+            blocks.append(
+                Syntax(
+                    output_display,
+                    "text",
+                    theme="monokai",
+                    word_wrap=True,
+                )
+        )
+
+        elif name == "memory" and success:
+            action = args.get("action")
+            key = args.get("key")
+            found = metadata.get("found")
+            summary = []
+            if isinstance(action, str) and action:
+                summary.append(action)
+            if isinstance(key, str) and key:
+                summary.append(key)
+            if isinstance(found, bool):
+                summary.append("found" if found else "missing")
+
+            if summary:
+                blocks.append(Text(" • ".join(summary), style="muted"))
+            output_display = truncate_text(
+                output,
+                self.config.model_name,
+                self._max_block_tokens,
+            )
+            blocks.append(
+                Syntax(
+                    output_display,
+                    "text",
+                    theme="monokai",
+                    word_wrap=True,
+                )
+            )
+            
         if error and not success:
             blocks.append(Text("Error:", style="error"))
 

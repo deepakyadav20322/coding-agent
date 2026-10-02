@@ -10,21 +10,39 @@
 # =========================
 
 import asyncio
+import logging
 from typing import Any, AsyncGenerator
-from openai import APIConnectionError, APIError, AsyncOpenAI, RateLimitError
+from openai import APIConnectionError, APIError, AsyncOpenAI, RateLimitError,APIStatusError
 
 from client.response import (StreamEventType, StreamEvent, TextDelta, TokenUsage, ToolCall, ToolCallDelta,parse_tool_call_arguments)
 from config.config import Config
 
+
+
+
+from client.errors import (
+    AUTH_ERROR,
+    NO_CREDITS,
+    RETRYABLE_STATUS,
+    auth_error_help,
+    no_credits_help,
+    provider_message,
+)
+
+logger = logging.getLogger(__name__)
 class LLMClient:
     def __init__(self,config: Config)->None :
         self._client : AsyncOpenAI | None = None
+        # (api_key, base_url) the current client was built with. If the user
+        # runs /login mid-session the key changes and we rebuild the client.
+        self._client_credentials: tuple[str | None, str | None] | None = None
         self.max_retries: int =  3
         self.config = config    
     
     # instance method (Get the initiated client instace)
     def get_client(self)->AsyncOpenAI:
         if self._client is None:
+            self._client_credentials = (self.config.api_key, self.config.base_url)
             self._client = AsyncOpenAI(
                 # api_key = "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",
                 # base_url="https://openrouter.ai/api/v1",
@@ -68,7 +86,15 @@ class LLMClient:
         )->AsyncGenerator[StreamEvent,None]:
 
 
-        client = self.get_client() 
+        
+
+        # Key or base URL changed since the client was built (e.g. /login)?
+        if self._client is not None and self._client_credentials != (self.config.api_key, self.config.base_url):
+            await self.close()
+
+        client = self.get_client()
+
+        
         # print("DEBUG messages:", message)
         kwargs = {
             # "model":"nvidia/nemotron-3-nano-30b-a3b:free",
@@ -94,49 +120,93 @@ class LLMClient:
                     event = await self._non_stream_response(client,kwargs)
                     yield event
                 return
-            except RateLimitError as e :
-                if attempt < self.max_retries:
-                    wait_time = 2 ** attempt  # Exponential backoff
-                    await asyncio.sleep(wait_time)
-                else:
-                    yield StreamEvent(  
-                    type = StreamEventType.ERROR,
-                    error = f"Rate limit exceeded after {self.max_retries} attempts.",
-                    )
-                    # I am here return because we reached to our retry limit so no need to continue further
+            # Old way error handling -------
+            # except RateLimitError as e :
+            #     if attempt < self.max_retries:
+            #         wait_time = 2 ** attempt  # Exponential backoff
+            #         await asyncio.sleep(wait_time)
+            #     else:
+            #         yield StreamEvent(  
+            #         type = StreamEventType.ERROR,
+            #         error = f"Rate limit exceeded after {self.max_retries} attempts.",
+            #         )
+            #         # I am here return because we reached to our retry limit so no need to continue further
+            #         return
+            # except APIConnectionError as e :
+            #     if attempt < self.max_retries:
+            #         wait_time = 2 ** attempt  # Exponential backoff
+            #         await asyncio.sleep(wait_time)
+            #     else:
+            #         print("REAL API CONNECTION ERROR:", e)
+            #         yield StreamEvent(  
+            #         type = StreamEventType.ERROR,
+            #         error = f"API connection error after {self.max_retries} attempts.",
+            #         )
+            #         return
+
+            # except APIError as e :
+            #     print("REAL API ERROR:", e)
+            #     if attempt < self.max_retries:
+            #         wait_time = 2 ** attempt  # Exponential backoff
+            #         await asyncio.sleep(wait_time)
+            #     else:
+            #         yield StreamEvent(  
+            #         type = StreamEventType.ERROR,
+            #         error = f"API error after {self.max_retries} attempts.",
+            #         )
+            #         return
+            # except Exception as e:
+            #     yield StreamEvent(  
+            #         type = StreamEventType.ERROR,
+            #         error = str(e),
+            #         )
+            #     return
+
+            # New way error handling ---
+            except APIStatusError as e:
+                status = e.status_code
+                detail = provider_message(e.body, e.message)
+                logger.debug("Provider returned HTTP %s: %s", status, detail)
+
+                # Expired / invalid key: retrying can never succeed.
+                if status == AUTH_ERROR:
+                    yield StreamEvent(type=StreamEventType.ERROR, error=auth_error_help(self.config, detail))
                     return
+
+                if status == NO_CREDITS:
+                    yield StreamEvent(type=StreamEventType.ERROR, error=no_credits_help(self.config, detail))
+                    return
+
+                # Rate limits and temporary server errors: back off and retry.
+                if status in RETRYABLE_STATUS and attempt < self.max_retries:
+                    await asyncio.sleep(2 ** attempt)
+                    continue
+
+                # Anything else (400 bad request, 403 moderation, 404 unknown
+                # model, or retries used up): show the provider's own message.
+                yield StreamEvent(type=StreamEventType.ERROR, error=f"Provider error (HTTP {status}): {detail}")
+                return
+
             except APIConnectionError as e :
+                logger.debug("Connection error: %s", e)
                 if attempt < self.max_retries:
-                    wait_time = 2 ** attempt  # Exponential backoff
-                    await asyncio.sleep(wait_time)
+                    await asyncio.sleep(2 ** attempt)
                 else:
-                    print("REAL API CONNECTION ERROR:", e)
-                    yield StreamEvent(  
-                    type = StreamEventType.ERROR,
-                    error = f"API connection error after {self.max_retries} attempts.",
+                    yield StreamEvent(
+                        type = StreamEventType.ERROR,
+                        error = (
+                            f"Could not connect to {self.config.base_url} after {self.max_retries} retries. "
+                            "Check your internet connection and base_url."
+                        ),
                     )
                     return
 
             except APIError as e :
-                print("REAL API ERROR:", e)
-                if attempt < self.max_retries:
-                    wait_time = 2 ** attempt  # Exponential backoff
-                    await asyncio.sleep(wait_time)
-                else:
-                    yield StreamEvent(  
-                    type = StreamEventType.ERROR,
-                    error = f"API error after {self.max_retries} attempts.",
-                    )
-                    return
-            except Exception as e:
-                yield StreamEvent(  
-                    type = StreamEventType.ERROR,
-                    error = str(e),
-                    )
+                yield StreamEvent(type = StreamEventType.ERROR, error = f"API error: {e}")
                 return
+            
 
-
-#  PRIVTAE METHODS TO GET RESPONSES
+#  PRIVTAE METHODS TO GET RESPONSES=============
     async def _stream_response(self,
         client:AsyncOpenAI,
         kwargs:dict[str,Any],

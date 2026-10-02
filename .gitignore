@@ -2,4 +2,19 @@
 .env/
 __pycache__/
 .env
-why_implemention_need.txt
+
+
+__pycache__/
+*.pyc
+*.pyo
+
+# Build / packaging artifacts
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+
+# IDE
+.vscode/
+.idea/

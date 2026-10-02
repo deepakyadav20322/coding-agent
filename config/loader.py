@@ -2,8 +2,9 @@
 from pathlib import Path
 from typing import Any
 from config.config import Config
-from platformdirs import user_config_dir
+from platformdirs import user_config_dir,user_data_dir
 import tomli
+import tomli_w 
 from utils.errors import ConfigError 
 import logging
 
@@ -15,6 +16,10 @@ logger = logging.getLogger(__name__)
 
 CONFIG_FILE_NAME = "config.toml"
 AGENT_MD_FILE = "AGENT.MD"
+
+def get_data_dir() -> Path:
+    return Path(user_config_dir("claude-code-type-agent"))
+
 # user related configuration
 def get_config_dir()->Path:
     # TODO:
@@ -23,6 +28,8 @@ def get_config_dir()->Path:
     # config_dir.mkdir(parents=True, exist_ok=True)
     return Path(user_config_dir("claude-code-type-agent"))
 
+def get_data_directory()->Path:
+    return Path(user_data_dir("claude-code-type-agent"))
 
 # system related configuration
 def get_system_config_path()->Path:
@@ -80,16 +87,19 @@ def load_config(cwd:Path|None)->Config:
 
     system_path = get_system_config_path()
         # 👇 ADD DEBUG HERE
-    print("System config path:", system_path)
-    print("File exists:", system_path.exists())
+    # print("System config path:", system_path)
+    # print("File exists:", system_path.exists())
 
 
     config_dict: dict[str, Any] = {}
+    api_key_origin:str | None = None
 
     # if your system path is other than file{menas folder} then you delaing with wrong things
     if system_path.is_file():
         try:
              config_dict = _parse_toml(system_path)
+             if "api_key" in config_dict:
+                 api_key_origin = str(system_path)
         except ConfigError :
             logger.warning(f"Skipping invalid system config: {system_path}")
 
@@ -98,11 +108,15 @@ def load_config(cwd:Path|None)->Config:
         try:
             project_config_dict = _parse_toml(project_path)
             config_dict = _merge_dicts(config_dict, project_config_dict)
+            if "api_key" in project_config_dict:
+                api_key_origin = str(project_path)
         except ConfigError:
             logger.warning(f"Skipping invalid system config: {system_path}")
 
+    config_dict["api_key_origin"] = api_key_origin
     if "cwd" not in config_dict:
         config_dict["cwd"] = cwd
+
 
     if "developer_instructions" not in config_dict:
         agent_md_content = _get_agent_md_files(cwd)
@@ -115,6 +129,52 @@ def load_config(cwd:Path|None)->Config:
         raise ConfigError(f"Invalid configuration: {e}") from e
 
     return config
+
+
+
+
+
+# ------------------------------------------------------------------------
+# NEW: helpers used by `codeagent login` and `codeagent config show`
+# ------------------------------------------------------------------------
+
+def load_system_config_raw() -> dict[str, Any]:
+    """Read the raw system TOML as a dict (or {} if it doesn't exist yet).
+    Used by `codeagent login` so we don't clobber other settings the user
+    already has saved (model name, temperature, etc.) when we write the key.
+    """
+    path = get_system_config_path()
+    if path.is_file():
+        try:
+            return _parse_toml(path)
+        except ConfigError:
+            logger.warning(f"System config is invalid, starting fresh: {path}")
+            return {}
+    return {}
+
+
+def save_system_config(data: dict[str, Any]) -> Path:
+    """Write a dict back to the system config TOML.
+    Creates the parent directory if it doesn't exist (your old TODO).
+    Returns the path written to, so the CLI can show it to the user.
+    """
+    path = get_system_config_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("wb") as f:
+        tomli_w.dump(data, f)
+    return path
+
+
+
+
+
+
+
+
+
+
+
+
 
 # TODO:for load_config():
 # If config.toml does not exist, automatically generate a default config file.
