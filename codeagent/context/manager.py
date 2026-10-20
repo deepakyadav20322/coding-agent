@@ -13,7 +13,7 @@ class MessageItem:
     role:str
     content:str
 
-    tool_call_id:str|None = None,
+    tool_call_id:str|None = None
     tool_calls: list[dict[str,Any]] =  field(default_factory=list)
 
     token_count:int |None = None
@@ -28,7 +28,11 @@ class MessageItem:
         if self.tool_calls:
             result['tool_calls']= self.tool_calls   
 
-        if self.content:
+        # if self.content:
+        #     result["content"] = self.content
+        if self.role == "tool":
+            result["content"] = self.content or "(no output)"
+        elif self.content:
             result["content"] = self.content
     
         # According to need we also next add tool calls related stufs here
@@ -76,6 +80,7 @@ class ContextManager:
         self._messages.append(item)
 
     def add_tool_result(self,tool_call_id:str,content:str)->None:
+        content = content or "(no output)"
         item = MessageItem(
             role="tool",
             content=content,
@@ -89,10 +94,23 @@ class ContextManager:
     def get_messages(self)->list[dict[str,Any]]:
         messages= []
 
+        # if self._system_prompt:
+        #     messages.append({
+        #         "role":"system",
+        #         "content":self._system_prompt,
+        #     })
+
+        # we add this extra information that model correctly know which model it used if we swith model in betweeen conversation and also it will help to avoid confusion in model if user ask which model you are using then model will answer with this exact id
         if self._system_prompt:
             messages.append({
-                "role":"system",
-                "content":self._system_prompt,
+                "role": "system",
+                "content": (
+                    self._system_prompt
+                    + f"\n\n# Runtime\nCurrent model: {self.config.model_name} (via OpenRouter). "
+                    "If asked which model you are, answer with this exact id. "
+                    "The model may have been switched mid-conversation, so earlier "
+                    "assistant messages may have come from a different model."
+                ),
             })
         for items in self._messages:
             messages.append(items.to_dict())

@@ -105,6 +105,10 @@ class LLMClient:
             "stream":stream
         }
 
+        effort = self.config.model.reasoning_effort
+        if effort != "off":
+            kwargs["extra_body"] = {"reasoning": {"effort": effort}}
+
         if tools:
             kwargs['tools'] = await self._build_tools(tools)
             kwargs['tool_choice'] = "auto"
@@ -240,6 +244,15 @@ class LLMClient:
 
             if choice.finish_reason:
                 finish_reason = choice.finish_reason
+
+            # Reasoning models stream their thinking separately from the answer.
+            # OpenRouter uses `reasoning`; DeepSeek's own API uses `reasoning_content`.
+            reasoning = getattr(delta, "reasoning", None) or getattr(delta, "reasoning_content", None)
+            if isinstance(reasoning, str) and reasoning:
+                yield StreamEvent(
+                    type=StreamEventType.REASONING_DELTA,
+                    reasoning_delta=reasoning,
+                )
 
             if delta.content:
                 yield StreamEvent(

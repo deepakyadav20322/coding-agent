@@ -48,7 +48,7 @@ from codeagent.config.loader import (
     get_system_config_path,    # NEW
     _get_project_config,       # NEW
 )
-from codeagent.ui.slash_command import handle_slash_command, is_slash_command
+from codeagent.ui.slash_command import SLASH_COMMANDS, handle_slash_command, is_slash_command
 from codeagent.ui.tui import TUI, get_console
 
 
@@ -100,7 +100,8 @@ class CLI:
                 f"model: {self.config.model_name}",
                 # f"model: nvidia/nemotron-3-nano-30b-a3b:free",
                 f"cwd: {self.config.cwd}",
-                "commands: /help /config /approval /model /exit",
+                # "commands: /help /config /approval /model /exit",
+                "commands: " + " ".join(SLASH_COMMANDS),
             ],
         )
 
@@ -158,75 +159,101 @@ class CLI:
         # It(assistant_streaming) is used to show assistance start horizontal line before first message coming 
         assistant_streaming = False
         final_response: str | None = None
+        try:
+            async for event in self.agent.run(message):
+                # print(event)
 
-        async for event in self.agent.run(message):
-            # print(event)
+                # ❌ DO NOT EXIT HERE
+                if event.type == AgentEventType.AGENT_START:
+                    self.tui.show_thinking()
+                    continue
 
-            # ❌ DO NOT EXIT HERE
-            if event.type == AgentEventType.AGENT_START:
-                continue
+                if event.type == AgentEventType.TEXT_DELTA:
 
-            if event.type == AgentEventType.TEXT_DELTA:
+                    content = event.data.get("content", "")
+                    if not assistant_streaming:
+                        self.tui.begin_assistant()
+                        assistant_streaming = True
+                    self.tui.stream_assistant_delta(content)
+                elif event.type == AgentEventType.TEXT_COMPLETE:
+                    final_response = event.data.get("content", "")
+                    if assistant_streaming:
+                        self.tui.end_assistant()
+                        assistant_streaming = False
 
-                content = event.data.get("content", "")
-                if not assistant_streaming:
-                    self.tui.begin_assistant()
-                    assistant_streaming = True
-                self.tui.stream_assistant_delta(content)
-            elif event.type == AgentEventType.TEXT_COMPLETE:
-                final_response = event.data.get("content", "")
-                if assistant_streaming:
-                    self.tui.end_assistant()
-                    assistant_streaming = False
+                # if event.type == AgentEventType.AGENT_END:
+                #     self.tui.stream_assistant_delta("\n")
+                #     break
 
-            # if event.type == AgentEventType.AGENT_END:
-            #     self.tui.stream_assistant_delta("\n")
-            #     break
+                # elif event.type == AgentEventType.AGENT_ERROR:
+                #     error = event.data.get("error", "Unknown error")
+                #     console.print(f"\n[error]ERROR: {error}[/error]")
 
-            # elif event.type == AgentEventType.AGENT_ERROR:
-            #     error = event.data.get("error", "Unknown error")
-            #     console.print(f"\n[error]ERROR: {error}[/error]")
+                elif event.type == AgentEventType.AGENT_ERROR:
+                    if assistant_streaming:
+                        self.tui.end_assistant()
+                        assistant_streaming = False
+                    self.tui.show_error(event.data.get("error", "Unknown error"))
 
-            elif event.type == AgentEventType.AGENT_ERROR:
-                if assistant_streaming:
-                    self.tui.end_assistant()
-                    assistant_streaming = False
-                self.tui.show_error(event.data.get("error", "Unknown error"))
+                elif event.type == AgentEventType.REASONING_DELTA:
+                    self.tui.show_reasoning(event.data.get("content", ""))
 
-            elif event.type == AgentEventType.TOOL_CALL_START:
-                tool_name =  event.data.get("name","unknown")
-                # tool_kind = None
-                # # tool = self.agent.tool_registry.get(tool_name)
-                # tool = self.agent.session.tool_registry.get(tool_name)
-                # # print(type(self.agent.session.tool_registry))
-                # if not toosl:
-                #     tool_kind = None
-                
-                tool_kind = self._get_tool_kind(tool_name)
-                self.tui.tool_call_start(
-                    event.data.get("call_id",""),
-                    tool_name,
-                    tool_kind,
-                    event.data.get("arguments",{}),
+                elif event.type == AgentEventType.TOOL_CALL_PREPARING:
+                    if assistant_streaming:
+                        self.tui.end_assistant()
+                        assistant_streaming = False
+                    self.tui.show_tool_preparing(
+                        event.data.get("name", "tool"),
+                        event.data.get("arg_chars", 0),
+                    )
 
-                )
-            elif event.type == AgentEventType.TOOL_CALL_COMPLETE:
-                tool_name = event.data.get("name", "unknown")
-                tool_kind = self._get_tool_kind(tool_name)
-                self.tui.tool_call_complete(
-                    event.data.get("call_id", ""),
-                    tool_name,
-                    tool_kind,
-                    event.data.get("success", False),
-                    event.data.get("output", ""),
-                    event.data.get("error"),
-                    event.data.get("metadata"),
-                    event.data.get('diff'),
-                \
-                    event.data.get("truncated", False),
-                    event.data.get("exit_code")
-                   
-                )
+                elif event.type == AgentEventType.TOOL_CALL_START:
+                    tool_name =  event.data.get("name","unknown")
+                    # tool_kind = None
+                    # # tool = self.agent.tool_registry.get(tool_name)
+                    # tool = self.agent.session.tool_registry.get(tool_name)
+                    # # print(type(self.agent.session.tool_registry))
+                    # if not toosl:
+                    #     tool_kind = None
+                    
+                    tool_kind = self._get_tool_kind(tool_name)
+                    self.tui.tool_call_start(
+                        event.data.get("call_id",""),
+                        tool_name,
+                        tool_kind,
+                        event.data.get("arguments",{}),
+
+                    )
+                    self.tui.show_tool_running(tool_name, event.data.get("arguments", {}))
+                    
+                elif event.type == AgentEventType.TOOL_CALL_COMPLETE:
+                    tool_name = event.data.get("name", "unknown")
+                    tool_kind = self._get_tool_kind(tool_name)
+                    self.tui.tool_call_complete(
+                        event.data.get("call_id", ""),
+                        tool_name,
+                        tool_kind,
+                        event.data.get("success", False),
+                        event.data.get("output", ""),
+                        event.data.get("error"),
+                        event.data.get("metadata"),
+                        event.data.get('diff'),
+                    \
+                        event.data.get("truncated", False),
+                        event.data.get("exit_code")
+                    
+                    )
+                    self.tui.show_thinking()   # result goes back to the model
+                elif event.type == AgentEventType.AGENT_ERROR:
+                        if assistant_streaming:
+                            self.tui.end_assistant()
+                            assistant_streaming = False
+                        self.tui.show_error(event.data.get("error", "Unknown error"))
+            
+        finally:
+            self.tui.hide_status()             # normal end, error or Ctrl+C
+            if assistant_streaming:
+                self.tui.end_assistant()
 
                 
                 

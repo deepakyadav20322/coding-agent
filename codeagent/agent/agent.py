@@ -55,6 +55,10 @@ class Agent:
 
             tool_calls:list[ToolCall] = []
 
+            # tHIS USED TO SHOW WHEN TOOL CALL PREPARING TO SHOW IN tui
+            preparing_names: dict[str, str] = {}   # call_id -> tool name
+            preparing_chars: dict[str, int] = {}   # call_id -> argument chars so far
+
             async for event in self.session.client.chat_completion(
                 self.session.context_manager.get_messages(),
                 tools = tool_schemas if tool_schemas else None,
@@ -62,11 +66,28 @@ class Agent:
             ):
 
                 # print(event)
-                if event.type == StreamEventType.TEXT_DELTA:
+                # if event.type == StreamEventType.TEXT_DELTA:
+                if event.type == StreamEventType.REASONING_DELTA:
+                    if event.reasoning_delta:
+                        yield AgentEvent.reasoning_delta(event.reasoning_delta)
+                elif event.type == StreamEventType.TEXT_DELTA:
                     if event.text_delta:
                         content  = event.text_delta.content 
                         response_text += content or ""
                         yield AgentEvent.text_delta(content)
+                elif event.type in (StreamEventType.TOOL_CALL_START, StreamEventType.TOOL_CALL_DELTA):
+                    delta = event.tool_call_delta
+                    if delta:
+                        if delta.name:
+                            preparing_names[delta.call_id] = delta.name
+                        preparing_chars[delta.call_id] = (
+                            preparing_chars.get(delta.call_id, 0) + len(delta.arguments_delta or "")
+                        )
+                        yield AgentEvent.tool_call_preparing(
+                            delta.call_id,
+                            preparing_names.get(delta.call_id, "tool"),
+                            preparing_chars[delta.call_id],
+                        )
                 elif event.type == StreamEventType.TOOL_CALL_COMPLETE:
                     if event.tool_call:
                         tool_calls.append(event.tool_call)
@@ -145,7 +166,11 @@ class Agent:
                     tool_result.tool_call_id,
                     tool_result.content
                 )
-
+        else:
+            yield AgentEvent.agent_error(
+                f"Stopped after reaching max_turns ({max_turns}). "
+                "Say 'continue' to keep going, or raise max_turns in config."
+            )
 
 
     async def __aenter__(self):

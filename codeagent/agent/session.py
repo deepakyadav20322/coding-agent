@@ -5,7 +5,7 @@ import uuid
 
 from codeagent.client.llm_client2 import LLMClient
 from codeagent.config.config import Config
-from codeagent.config.loader import get_data_dir
+from codeagent.config.loader import get_data_directory
 from codeagent.context.manager import ContextManager
 from codeagent.tools.registry import create_default_registry
 
@@ -15,7 +15,7 @@ class Session:
         self.config = config
         self.client = LLMClient(config=config)
         self.tool_registry = create_default_registry(config=config)
-        self.context_manager = ContextManager(config=config, user_memory=self._load_memory())
+        self.context_manager = ContextManager(config=config, user_memory=self._load_memory(), tools=self.tool_registry.get_tools(),)
 
         self.session_id = str(uuid.uuid4())
         self.created_at = datetime.now()
@@ -24,7 +24,7 @@ class Session:
 
 
     def _load_memory(self) -> str | None:
-        data_dir = get_data_dir()
+        data_dir = get_data_directory()
         data_dir.mkdir(parents=True, exist_ok=True)
         path = data_dir / "user_memory.json"
 

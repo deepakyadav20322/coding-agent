@@ -21,6 +21,9 @@ import os
 from typing import Callable
 from rich.console import Console
 
+import re
+from codeagent.tools.builtin.memory import MemoryTool
+
 from codeagent.config.config import Config
 from codeagent.config.loader import load_system_config_raw, save_system_config
 
@@ -32,8 +35,13 @@ from codeagent.config.loader import load_system_config_raw, save_system_config
 # Keep this list short -- 3-5 items max -- so the menu stays scannable.
 _MODEL_PRESETS: list[tuple[str, str, str]] = [
     # (display name,                           model id,                          description)
+
+    ("OpenRouter Free Router",      "openrouter/free",                    "Auto-picks a free model per request. Quality varies."),
     ("Claude Sonnet 4.5 (best quality)",       "anthropic/claude-sonnet-4.5",     "Frontier model. Best reasoning, highest cost."),
+    ("Claude Sonnet 5.5",           "anthropic/claude-sonnet-5.5",        "~$2 / $10. Excellent for coding agents."),
     ("GPT-4o-mini (cheap, fast)",              "openai/gpt-4o-mini",              "Strong quality, much lower cost."),
+    ("Gemini 2.5 Flash",            "google/gemini-2.5-flash",            "~$0.30 / $2.50. Fast, large context."),
+
     ("Mistral Ministral 14B (free)",           "mistralai/ministral-14b-2512",    "Open-source, free on OpenRouter."),
 ]
 
@@ -42,7 +50,7 @@ _MODEL_PRESETS: list[tuple[str, str, str]] = [
 # Handlers
 # -----------------------------------------------------------------------------
 
-def _cmd_help(config: Config, console: Console) -> str:
+def _cmd_help(config: Config, console: Console,args:str="") -> str:
     """Show the list of available slash commands."""
     console.print()
     console.print("[bold]Available commands[/bold]")
@@ -53,7 +61,7 @@ def _cmd_help(config: Config, console: Console) -> str:
     return "continue"
 
 
-def _cmd_model(config: Config, console: Console) -> str:
+def _cmd_model(config: Config, console: Console,args:str="") -> str:
     """Show the model picker and switch model for the rest of the session."""
     console.print()
     console.print(f"[bold]Current model:[/bold] {config.model_name}")
@@ -90,7 +98,7 @@ def _cmd_model(config: Config, console: Console) -> str:
     return "continue"
 
 
-def _cmd_login(config: Config, console: Console) -> str:
+def _cmd_login(config: Config, console: Console,args:str="") -> str:
     """Save a new API key without restarting the session."""
     console.print()
     api_key = console.input("Paste your new API key (hidden, Enter to cancel): ", password=True).strip()
@@ -122,11 +130,70 @@ def _cmd_login(config: Config, console: Console) -> str:
     return "continue"
 
 
-def _cmd_exit(config: Config, console: Console) -> str:
+# def _cmd_exit(config: Config, console: Console,args:str="") -> str:
+#     """End the session cleanly."""
+#     console.print("[dim]Goodbye![/dim]")
+#     return "exit"
+def _cmd_exit(config: Config, console: Console, args: str = "") -> str:
     """End the session cleanly."""
-    console.print("[dim]Goodbye![/dim]")
     return "exit"
 
+def _cmd_memory(config: Config, console: Console, args: str = "") -> str:
+    """List, add or delete saved memories (same store the `memory` tool uses)."""
+    store = MemoryTool(config)          # reuse its load/save so the file path never drifts
+    memory = store._load_memory()
+    entries: dict[str, str] = memory.setdefault("entries", {})
+
+    action, _, rest = args.strip().partition(" ")
+    action = action.lower()
+    rest = rest.strip()
+
+    if action in ("", "list"):
+        console.print()
+        if not entries:
+            console.print("[dim]No memories saved. Add one with /memory add <text>[/dim]")
+            return "continue"
+        console.print("[bold]Saved memories[/bold] [dim](used from the next session)[/dim]")
+        for key, value in entries.items():
+            console.print(f"  [cyan]{key}[/cyan]  {value}")
+        console.print()
+        console.print("[dim]Delete one with /memory delete <key>[/dim]")
+        return "continue"
+
+    if action == "add":
+        if not rest:
+            console.print("[error]Usage: /memory add <text>[/error]")
+            return "continue"
+        # Key = first few words, e.g. "give crisp answers" -> "give-crisp-answers".
+        base = "-".join(re.findall(r"[a-z0-9]+", rest.lower())[:4]) or "note"
+        key, n = base, 2
+        while key in entries:
+            key, n = f"{base}-{n}", n + 1
+        entries[key] = rest
+        store._save_memory(memory)
+        console.print(f"[success]Saved[/success] [cyan]{key}[/cyan]: {rest}")
+        console.print("[dim]It will be applied from your next session.[/dim]")
+        return "continue"
+
+    if action in ("delete", "del", "rm"):
+        if not rest:
+            console.print("[error]Usage: /memory delete <key>   (see keys with /memory)[/error]")
+            return "continue"
+        if rest not in entries:
+            console.print(f"[error]No memory with key: {rest}[/error]  Run [cyan]/memory[/cyan] to see keys.")
+            return "continue"
+        removed = entries.pop(rest)
+        store._save_memory(memory)
+        console.print(f"[success]Deleted[/success] [cyan]{rest}[/cyan]: {removed}")
+        return "continue"
+
+    console.print("[error]Usage:[/error] /memory  |  /memory add <text>  |  /memory delete <key>")
+    return "continue"
+
+def _cmd_clear(config: Config, console: Console, args: str = "") -> str:
+    """Clear the terminal screen."""
+    console.clear()
+    return "continue"
 
 # -----------------------------------------------------------------------------
 # Registry: maps the command name (with the leading slash) to:
@@ -135,7 +202,9 @@ def _cmd_exit(config: Config, console: Console) -> str:
 SLASH_COMMANDS: dict[str, tuple[Callable[[Config, Console], str], str]] = {
     "/help": (_cmd_help, "Show this help."),
     "/model": (_cmd_model, "Pick a model for this session."),
+    "/memory": (_cmd_memory, "List memories. Also: /memory add <text>, /memory delete <key>"),
     "/login": (_cmd_login, "Save a new API key (e.g. when yours expired)."),
+    "/clear": (_cmd_clear, "Clear the screen. (Menas /clear as written only wipes what you can see on screen.)"),
     "/exit": (_cmd_exit, "Quit codeagent."),
 }
 
@@ -153,7 +222,9 @@ def handle_slash_command(user_input: str, config: Config, console: Console) -> s
     """
     # Normalize: take just the first token (so `/model 2` would still match
     # /model, in case we add inline arguments later).
-    name = user_input.strip().split()[0].lower()
+    # name = user_input.strip().split()[0].lower()
+    name, _, args = user_input.strip().partition(" ")
+    name = name.lower()
 
     entry = SLASH_COMMANDS.get(name)
     if entry is None:
@@ -161,4 +232,4 @@ def handle_slash_command(user_input: str, config: Config, console: Console) -> s
         return "continue"
 
     handler, _description = entry
-    return handler(config, console)
+    return handler(config, console, args.strip())

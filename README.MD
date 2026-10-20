@@ -104,7 +104,7 @@ User Input (CLI)
 - **Safety blocklist** — dangerous shell commands (`rm -rf /`, fork bombs, disk formatters, etc.) are blocked before execution.
 - **Cross-platform** — handles Windows (`cmd.exe`) and Unix (`/bin/bash`) shell execution paths.
 - **Interactive and single-prompt modes** — run with a prompt argument for a one-shot task, or without for a persistent interactive session.
-- **AGENT.md support** — place an `AGENT.md` file in your project directory to inject project-specific instructions into the agent's system prompt automatically.
+- **AGENT.MD support** — place an `AGENT.MD` file in your project directory to inject project-specific instructions into the agent's system prompt automatically.
 
 ---
 

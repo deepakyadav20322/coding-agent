@@ -103,7 +103,7 @@ class MemoryTool(Tool):
             memory = self._load_memory()
             count = len(memory.get("entries",{}))
             memory["entries"] = {}
-            self._save_memory()
+            self._save_memory(memory)
             return ToolResult.success_result(f"cleared {count} memory entries")
             
         else:

@@ -20,9 +20,11 @@ class AgentEventType(str,):
 
     # text streaming
     TEXT_DELTA = "text_delta"
+    REASONING_DELTA = "reasoning_delta"
     TEXT_COMPLETE = "text_complete"
 
     # tool call streaming
+    TOOL_CALL_PREPARING = "tool_call_preparing"
     TOOL_CALL_START = "tool_call_start"
     TOOL_CALL_COMPLETE = "tool_call_complete"
 
@@ -70,7 +72,19 @@ class AgentEvent:
             type= AgentEventType.TEXT_COMPLETE,
             data= {"content":content}
         )
+
+    @classmethod
+    def reasoning_delta(cls, content: str) -> AgentEvent:
+        """A chunk of the model's thinking. Shown in the status line only, never saved to context."""
+        return cls(type=AgentEventType.REASONING_DELTA, data={"content": content})
     
+    @classmethod
+    def tool_call_preparing(cls, call_id: str, name: str, arg_chars: int) -> AgentEvent:
+        """Model is still streaming this tool call's arguments (e.g. a big write_file)."""
+        return cls(
+            type=AgentEventType.TOOL_CALL_PREPARING,
+            data={"call_id": call_id, "name": name, "arg_chars": arg_chars},
+        )
     @classmethod
     def tool_call_start(cls,call_id:str,name:str,arguments:dict[str,Any]):
 
