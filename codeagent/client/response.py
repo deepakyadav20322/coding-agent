@@ -31,6 +31,7 @@ class StreamEventType(str,Enum):
     TOOL_CALL_START = "tool_call_start"
     TOOL_CALL_DELTA = "tool_call_delta"
     TOOL_CALL_COMPLETE = "tool_call_complete"
+    REASONING_DELTA = "reasoning_delta"   # model's thinking text (reasoning models only)
 
 
 
@@ -76,6 +77,7 @@ class StreamEvent:
     tool_call_delta:ToolCallDelta |None=None
     tool_call:ToolCall |None = None
     usage: TokenUsage |None = None
+    reasoning_delta: str | None = None
 
     
 @dataclass

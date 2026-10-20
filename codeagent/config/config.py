@@ -1,5 +1,7 @@
 
 
+from typing import Literal
+
 from pydantic import BaseModel, Field, model_validator
 from pathlib import Path
 import os
@@ -8,6 +10,7 @@ class ModelConfig(BaseModel):
     name:str  = "openrouter/free"
     temperature:float = Field(default=1,ge=0.0,le=2.0)
     context_window:int = 256000
+    reasoning_effort: Literal["off", "minimal", "low", "medium", "high"] = "off"
 
 
 class ShellEnvironMentPolicy(BaseModel):

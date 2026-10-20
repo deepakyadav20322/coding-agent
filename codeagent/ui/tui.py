@@ -2,6 +2,7 @@ from pathlib import Path
 import re
 from typing import Any
 
+from codeagent.ui.spinner import StatusLine
 from rich.console import Console
 from rich.theme import Theme
 from rich.rule import Rule
@@ -46,6 +47,8 @@ AGENT_THEME = Theme(
 
 _console : Console | None = None
 
+READ_FILE_PREVIEW_LINES = 30   # display only; the model still gets the full file
+
 def get_console() -> Console:
     global _console
     if _console is None:
@@ -62,8 +65,25 @@ class TUI:
         # self.cwd = Path.cwd()
         self.cwd = self.config.cwd
         self._max_block_tokens =800
+        self.status = StatusLine(self.console)
+
+    def show_reasoning(self, chunk: str) -> None:
+        self.status.reasoning(chunk)
+
+    def show_thinking(self) -> None:
+        self.status.thinking()
+
+    def show_tool_preparing(self, name: str, arg_chars: int) -> None:
+        self.status.tool_preparing(name, arg_chars)
+
+    def show_tool_running(self, name: str, arguments: dict[str, Any]) -> None:
+        self.status.tool_running(name, arguments)
+
+    def hide_status(self) -> None:
+        self.status.stop()
 
     def begin_assistant(self)->None:
+        self.hide_status()
         self.console.print()
         self.console.print(Rule(Text("Assistant",style="assistant")))
         self._assistant_stream_open = True
@@ -124,6 +144,7 @@ class TUI:
 
 
     def tool_call_start(self,call_id:str,name:str,tool_kind:str,arguments:dict[str,Any],):
+        self.hide_status()
         self._tool_args_by_call_id[call_id] = arguments
         border_style = f"tool.{tool_kind}" if tool_kind else "tool"
         title = Text.assemble(
@@ -225,6 +246,7 @@ class TUI:
         }.get(suffix, "text")
 
     def show_error(self, message: str, title: str = "Error") -> None:
+        self.hide_status()
         # Text() renders the message literally, so brackets in provider
         # messages can't be misread as rich markup.
         self.console.print()
@@ -263,6 +285,7 @@ class TUI:
 
      
     def tool_call_complete(self,call_id:str,name:str,tool_kind:str,success:bool,output:str|None,error:str|None, metadata:dict[str,Any]|None,diff:str|None,truncated:bool,exit_code:int|None,): 
+        self.hide_status()
         border_style = f"tool.{tool_kind}" if tool_kind else "tool"
         status_icon = "✓" if success else "✗"
         status_style = "success" if success else "error"
@@ -302,6 +325,21 @@ class TUI:
                     )
                 header = "".join(header_parts)
                 blocks.append(Text(header, style="muted"))
+                # blocks.append(
+                #     Syntax(
+                #         code,
+                #         pl,
+                #         theme="monokai",
+                #         line_numbers=True,
+                #         start_line=start_line,
+                #         word_wrap=False,
+                #     )
+                # )
+                code_lines = code.splitlines()
+                hidden_lines = len(code_lines) - READ_FILE_PREVIEW_LINES
+                if hidden_lines > 0:
+                    code = "\n".join(code_lines[:READ_FILE_PREVIEW_LINES])
+
                 blocks.append(
                     Syntax(
                         code,
@@ -312,6 +350,8 @@ class TUI:
                         word_wrap=False,
                     )
                 )
+                if hidden_lines > 0:
+                    blocks.append(Text(f"… +{hidden_lines} lines", style="muted"))
             else:
                 output_display = truncate_text(
                     output,
